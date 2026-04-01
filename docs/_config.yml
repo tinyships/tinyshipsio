@@ -1,0 +1,11 @@
+title: TinyShips
+description: Quick whys and how-tos for doing new and interesting things.
+theme: minima
+email: tinyshipsio@gmail.com
+
+# If hosting at username.github.io/tinyshipsio, set:
+# baseurl: "/tinyshipsio"
+# url: "https://username.github.io"
+# If hosting at a custom domain or username.github.io (root), leave these blank.
+baseurl: ""
+url: ""

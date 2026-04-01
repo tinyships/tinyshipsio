@@ -1,0 +1,30 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: openshift-monitoring-datasource
+  namespace: my-custom-metrics
+spec:
+  instanceSelector:
+    matchLabels:
+      app: grafana # This matches the label in the Grafana CR
+  
+  # 1. Tell the Operator which Secret to grab and where to map it
+  valuesFrom:
+    - targetPath: "secureJsonData.httpHeaderValue1"
+      valueFrom:
+        secretKeyRef:
+          name: "custom-grafana-token" # The name of the Secret we created in Step 2
+          key: "token"                 # The data key OpenShift uses inside the Secret
+
+  datasource:
+    name: OpenShift Thanos
+    type: prometheus
+    access: proxy
+    url: https://thanos-querier.openshift-monitoring.svc.cluster.local:9091
+    isDefault: true
+    jsonData:
+      tlsSkipVerify: true
+      httpHeaderName1: Authorization
+    secureJsonData:
+      # 2. Use the ${key} syntax to inject the secret value behind the Bearer prefix
+      httpHeaderValue1: "Bearer ${token}"

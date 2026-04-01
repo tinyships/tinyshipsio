@@ -1,0 +1,73 @@
+---
+---
+
+@import "minima";
+
+// Header
+.site-header {
+  background: linear-gradient(135deg, #7C3AED 0%, #EC4899 60%, #10B981 100%);
+  border-top: none;
+  border-bottom: none;
+  padding: 12px 0;
+}
+
+.site-title,
+.site-title:visited {
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1.4rem;
+  letter-spacing: -0.3px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.15);
+
+  &:hover {
+    color: rgba(255,255,255,0.85);
+    text-decoration: none;
+  }
+}
+
+.site-logo {
+  font-size: 1.5rem;
+  margin-right: 6px;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.site-nav {
+  .page-link {
+    color: rgba(255,255,255,0.9);
+
+    &:hover {
+      color: #ffffff;
+    }
+  }
+
+  .menu-icon > svg path {
+    fill: #ffffff;
+  }
+}
+
+// Post title links — use purple
+.post-list h3 a {
+  color: #7C3AED;
+
+  &:visited {
+    color: #9D50E8;
+  }
+
+  &:hover {
+    color: #EC4899;
+  }
+}
+
+// Inline links — warm green
+a {
+  color: #059669;
+
+  &:visited {
+    color: #7C3AED;
+  }
+
+  &:hover {
+    color: #EC4899;
+  }
+}

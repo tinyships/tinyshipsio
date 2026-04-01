@@ -1,0 +1,20 @@
+# macOS
+.DS_Store
+
+# Internal
+CLAUDE.md
+
+# Jekyll build output
+_site/
+.sass-cache/
+.jekyll-cache/
+.jekyll-metadata
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Archives
+*.zip
