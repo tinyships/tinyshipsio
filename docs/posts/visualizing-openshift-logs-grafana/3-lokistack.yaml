@@ -1,0 +1,21 @@
+# LokiStack — deployed in openshift-logging alongside the Logging Operator.
+# Requires the logging-loki-s3 secret to exist first (created by 7-lokistack-setup.sh).
+apiVersion: loki.grafana.com/v1
+kind: LokiStack
+metadata:
+  name: logging-loki
+  namespace: openshift-logging
+spec:
+  size: 1x.demo
+  storage:
+    schemas:
+    - version: v13
+      effectiveDate: "2024-10-01"
+    secret:
+      name: logging-loki-s3
+      type: s3
+  storageClassName: ocs-external-storagecluster-ceph-rbd
+  rules:
+    enabled: false
+  tenants:
+    mode: openshift-logging

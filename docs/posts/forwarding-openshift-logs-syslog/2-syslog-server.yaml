@@ -1,0 +1,154 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: syslog-server
+---
+# Build a UBI9 image with rsyslog installed at build time — no root needed at runtime.
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: rsyslog-server
+  namespace: syslog-server
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: rsyslog-server
+  namespace: syslog-server
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: rsyslog-server:latest
+  source:
+    type: Dockerfile
+    dockerfile: |
+      FROM registry.access.redhat.com/ubi9/ubi:latest
+      RUN dnf install -y rsyslog && dnf clean all && rm -rf /var/cache/dnf
+      USER 1001
+  strategy:
+    type: Docker
+    dockerStrategy: {}
+  triggers:
+  - type: ConfigChange
+---
+# rsyslog configuration — non-privileged port 1514, all paths under /tmp
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rsyslog-config
+  namespace: syslog-server
+data:
+  rsyslog.conf: |
+    global(workDirectory="/tmp/rsyslog")
+
+    module(load="imudp")
+    input(type="imudp" port="1514")
+
+    module(load="imtcp")
+    input(type="imtcp" port="1514")
+
+    $template RemoteFormat,"%TIMESTAMP:::date-rfc3339% [%HOSTNAME%] %syslogtag%%msg%\n"
+    *.* /tmp/syslog/syslog.log;RemoteFormat
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rsyslog-startup
+  namespace: syslog-server
+data:
+  start.sh: |
+    #!/bin/bash
+    set -e
+    mkdir -p /tmp/rsyslog /tmp/syslog
+    touch /tmp/syslog/syslog.log
+    # -n keeps rsyslog in foreground; background it so we can tail the log file
+    rsyslogd -n -i /tmp/rsyslog/rsyslogd.pid -f /etc/rsyslog-custom/rsyslog.conf &
+    echo "rsyslog started, listening on TCP/UDP 1514"
+    exec tail -f /tmp/syslog/syslog.log
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rsyslog-server
+  namespace: syslog-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rsyslog-server
+  template:
+    metadata:
+      labels:
+        app: rsyslog-server
+    spec:
+      containers:
+      - name: rsyslog
+        image: image-registry.openshift-image-registry.svc:5000/syslog-server/rsyslog-server:latest
+        command: ["/bin/bash", "/startup/start.sh"]
+        ports:
+        - name: syslog-tcp
+          containerPort: 1514
+          protocol: TCP
+        - name: syslog-udp
+          containerPort: 1514
+          protocol: UDP
+        volumeMounts:
+        - name: startup
+          mountPath: /startup
+        - name: rsyslog-config
+          mountPath: /etc/rsyslog-custom
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
+      volumes:
+      - name: startup
+        configMap:
+          name: rsyslog-startup
+          defaultMode: 0755
+      - name: rsyslog-config
+        configMap:
+          name: rsyslog-config
+---
+# ClusterIP service for in-cluster forwarding (used by the CLF inside the same cluster)
+apiVersion: v1
+kind: Service
+metadata:
+  name: rsyslog-service
+  namespace: syslog-server
+spec:
+  selector:
+    app: rsyslog-server
+  ports:
+  - name: syslog-tcp
+    port: 1514
+    protocol: TCP
+    targetPort: 1514
+  - name: syslog-udp
+    port: 1514
+    protocol: UDP
+    targetPort: 1514
+---
+# NodePort service for external access — use this when the CLF is on a different cluster
+# or when simulating a truly external syslog destination.
+# For production, prefer type: LoadBalancer on cloud platforms.
+# Note: OpenShift Routes are HTTP/HTTPS only and do not pass raw TCP syslog traffic.
+apiVersion: v1
+kind: Service
+metadata:
+  name: rsyslog-external
+  namespace: syslog-server
+spec:
+  type: NodePort
+  selector:
+    app: rsyslog-server
+  ports:
+  - name: syslog-tcp
+    port: 1514
+    protocol: TCP
+    targetPort: 1514
+    nodePort: 31514

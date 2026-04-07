@@ -1,0 +1,81 @@
+# Updated ClusterLogForwarder — sends logspam logs to both rsyslog and LokiStack.
+# Apply after LokiStack is Ready (check: oc get lokistack logging-loki -n openshift-logging).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: logcollector
+  namespace: openshift-logging
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: logging-collector-application-logs
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: collect-application-logs
+subjects:
+- kind: ServiceAccount
+  name: logcollector
+  namespace: openshift-logging
+---
+# Allow the collector to write to the LokiStack
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: logging-collector-write-application-logs
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-logging-write-application-logs
+subjects:
+- kind: ServiceAccount
+  name: logcollector
+  namespace: openshift-logging
+---
+apiVersion: observability.openshift.io/v1
+kind: ClusterLogForwarder
+metadata:
+  name: instance
+  namespace: openshift-logging
+spec:
+  serviceAccount:
+    name: logcollector
+
+  inputs:
+  - name: logspam-logs
+    type: application
+    application:
+      includes:
+      - namespace: logspam
+
+  outputs:
+  - name: syslog-out
+    type: syslog
+    syslog:
+      url: tcp://rsyslog-service.syslog-server.svc.cluster.local:1514
+      rfc: RFC5424
+      facility: user
+      enrichment: KubernetesMinimal
+
+  - name: loki-out
+    type: lokiStack
+    lokiStack:
+      target:
+        name: logging-loki
+        namespace: openshift-logging
+      authentication:
+        token:
+          from: serviceAccount
+    tls:
+      ca:
+        configMapName: openshift-service-ca.crt
+        key: service-ca.crt
+
+  pipelines:
+  - name: app-to-all
+    inputRefs:
+    - logspam-logs
+    outputRefs:
+    - syslog-out
+    - loki-out
