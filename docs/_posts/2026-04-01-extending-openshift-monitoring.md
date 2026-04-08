@@ -306,5 +306,3 @@ From here you have a fully editable Grafana instance. Use **Explore** for ad-hoc
 - [Red Hat KB: How to export Prometheus metrics into a CSV format in RHOCP4](https://access.redhat.com/solutions/7018296)
 - [Red Hat Blog: Custom Grafana dashboards for Red Hat OpenShift Container Platform 4](https://www.redhat.com/en/blog/custom-grafana-dashboards-red-hat-openshift-container-platform-4)
 - [Red Hat Cloud Experts: Deploying Grafana on OpenShift 4](https://cloud.redhat.com/experts/o11y/ocp-grafana/)
-- [OCP 4.18 Docs: Accessing metrics](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/monitoring/accessing-metrics)
-- [OCP 4.12 Docs: Accessing third-party monitoring APIs](https://docs.redhat.com/en/documentation/openshift_container_platform/4.12/html/monitoring/accessing-third-party-monitoring-apis)

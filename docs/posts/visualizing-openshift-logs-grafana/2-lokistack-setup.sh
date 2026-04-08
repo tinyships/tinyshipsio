@@ -6,6 +6,9 @@ set -e
 NAMESPACE="openshift-logging"
 OBC_NAME="logging-loki-bucket"
 
+echo "==> Creating namespace ${NAMESPACE}..."
+oc create namespace ${NAMESPACE} --dry-run=client -o yaml | oc apply -f -
+
 echo "==> Creating ObjectBucketClaim..."
 cat <<EOF | oc apply -f -
 apiVersion: objectbucket.io/v1alpha1

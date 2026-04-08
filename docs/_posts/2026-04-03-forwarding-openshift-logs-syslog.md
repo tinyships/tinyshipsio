@@ -536,12 +536,11 @@ The script reads the IP of a worker node, constructs the full `tcp://<node-ip>:3
 
 That's the forwarding pipeline complete. Logs leave your cluster, arrive at a syslog server you control, and the only thing connecting them is a `ClusterLogForwarder` and a service endpoint. In a real deployment, swap the internal service URL for your centralized syslog server — Splunk, Graylog, a managed SIEM — and nothing else changes.
 
-If you want to go further and query those same logs interactively inside the cluster, the next post covers adding LokiStack and Grafana to the same setup: [Querying OpenShift Logs with LokiStack and Grafana](/2026/04/04/visualizing-openshift-logs-grafana.html).
+If you want to go further and query those same logs interactively inside the cluster, the next post covers adding LokiStack and Grafana to the same setup: [Querying OpenShift Logs with LokiStack and Grafana](/2026/04/13/visualizing-openshift-logs-grafana.html).
 
 ---
 
 ## References
 
-- [OCP Logging 6.x Docs: Log forwarding](https://docs.redhat.com/en/documentation/red_hat_openshift_logging/6.2/html/log_collection_and_forwarding/about-log-collection-and-forwarding)
-- [OCP Logging 6.x Docs: Syslog output type](https://docs.redhat.com/en/documentation/red_hat_openshift_logging/6.2/html/log_collection_and_forwarding/log-output-types#syslog-output-type)
-- [OCP Logging 6.x Docs: Installing the Logging Operator](https://docs.redhat.com/en/documentation/red_hat_openshift_logging/6.2/html/installing/cluster-logging-deploying)
+- [OCP Logging 6.5 Docs: Configuring log forwarding](https://docs.redhat.com/en/documentation/red_hat_openshift_logging/6.5/html/configuring_logging/configuring-log-forwarding)
+- [OCP Logging 6.5 Docs: Installing logging](https://docs.redhat.com/en/documentation/red_hat_openshift_logging/6.5/html-single/installing_logging/index)

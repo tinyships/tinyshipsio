@@ -3,7 +3,8 @@
 
 # Internal
 CLAUDE.md
-docs/ideas/
+ideas/
+.claude/
 
 # Jekyll build output
 _site/
@@ -17,5 +18,6 @@ __pycache__/
 *.pyo
 .env
 
-# Archives
+# Archives — ignore loose zips but allow post download artifacts
 *.zip
+!docs/posts/**/*.zip

@@ -1,9 +1,21 @@
-# Loki Operator — cluster-scoped, installs to openshift-operators
+# Loki Operator — dedicated namespace, All Namespaces install scope
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: loki-operator
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: loki-operator-group
+  namespace: loki-operator
+spec: {}
+---
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: loki-operator
-  namespace: openshift-operators
+  namespace: loki-operator
 spec:
   channel: stable-6.5
   installPlanApproval: Automatic
@@ -11,7 +23,7 @@ spec:
   source: redhat-operators
   sourceNamespace: openshift-marketplace
 ---
-# Grafana Operator — namespace-scoped, installs to grafana-logging
+# Grafana Operator — dedicated namespace, namespace-scoped
 apiVersion: v1
 kind: Namespace
 metadata:

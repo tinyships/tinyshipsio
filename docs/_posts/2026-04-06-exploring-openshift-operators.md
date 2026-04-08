@@ -317,6 +317,6 @@ None of this requires external access or docs that match your exact version. Eve
 
 ## References
 
-- [OCP Docs: Managing operators with the CLI](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/operators/managing-operators-with-the-cli)
+- [OCP Docs: Adding operators to a cluster](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/operators/administrator-tasks#olm-adding-operators-to-a-cluster)
 - [OCP Docs: oc explain](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/cli_tools/openshift-cli-oc#oc-explain)
 - [Kubernetes Docs: Understanding CRD validation schemas](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#validation)

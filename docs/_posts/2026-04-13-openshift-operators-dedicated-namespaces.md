@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Why you should not install Operators in openshift-operators"
+title: "Why you should not install Operators in common namespace such as openshift-operators"
 date: 2026-04-13
 ---
 
@@ -28,8 +28,6 @@ It's worth slowing down on this. Upgrade control is one of the most operationall
 
 1. Understand what `openshift-operators` is and why it's the default
 2. See how shared InstallPlans form when multiple Subscriptions land in the same namespace
-3. Create a dedicated namespace and OperatorGroup for each operator instead
-4. Verify that InstallPlans are now isolated and upgrade behavior is independent
 
 ---
 
@@ -49,12 +47,16 @@ kind: OperatorGroup
 metadata:
   name: global-operators
   namespace: openshift-operators
-spec: {}
+spec:
+  upgradeStrategy: Default
+status:
+  namespaces:
+  - ""
 ```
 
-The empty `spec` — specifically, no `targetNamespaces` field — is the cluster-wide selector. An operator installed into a namespace with this OperatorGroup watches all namespaces. That's appropriate for some operators. The problem isn't the scope; it's putting multiple operators in the same bucket.
+The key is `status.namespaces: [""]` — an empty string is the cluster-wide selector. An operator installed into a namespace with this OperatorGroup watches all namespaces. That's appropriate for some operators. The problem isn't the scope; it's putting multiple operators in the same bucket.
 
-When you install an operator from OperatorHub in the web console and select "All Namespaces" as the install mode, the UI silently targets `openshift-operators` as the destination namespace. It doesn't prompt you to consider isolation. The Web Terminal Operator is a good example — it's a Red Hat operator that provides an in-browser terminal in the OpenShift console, and installing it through the UI drops it straight into `openshift-operators` by default. This is how operators accumulate there without a deliberate choice.
+When you install an operator from OperatorHub in the web console and select "All Namespaces" as the install mode, the UI silently targets `openshift-operators` as the destination namespace. It doesn't prompt you to consider isolation. This is how operators accumulate there without a deliberate choice.
 
 Check how many subscriptions are already living there:
 
@@ -62,43 +64,52 @@ Check how many subscriptions are already living there:
 oc get subscriptions -n openshift-operators
 ```
 
-If you see more than one, you're already in the shared InstallPlan situation.
+```
+NAME                                                                PACKAGE                           SOURCE             CHANNEL
+devworkspace-operator-fast-redhat-operators-openshift-marketplace   devworkspace-operator             redhat-operators   fast
+loki-operator                                                       loki-operator                     redhat-operators   stable-6.5
+openshift-pipelines-operator-rh                                     openshift-pipelines-operator-rh   redhat-operators   latest
+web-terminal                                                        web-terminal                      redhat-operators   fast
+```
+
+Four operators in the same namespace. You're already in the shared InstallPlan situation.
 
 ---
 
 ### Step 2: See How Shared InstallPlans Form
 
-Say you've installed the Web Terminal Operator and the Kiali Operator both into `openshift-operators` — the Web Terminal with `Automatic` approval and Kiali with `Manual` so your team can review service mesh changes before they go in. When updates become available for both, check what OLM generates:
+This is what the InstallPlans in that namespace actually look like:
 
 ```bash
 oc get installplan -n openshift-operators -o wide
 ```
 
 ```
-NAME            CSV                                                      APPROVAL    APPROVED
-install-xk2pj   web-terminal.v1.9.0                                      Automatic   true
-install-m8qzr   web-terminal.v1.10.0,kiali-operator.v1.73.0              Manual      false
+NAME            CSV                                       APPROVAL   APPROVED
+install-6zbg9   openshift-pipelines-operator-rh.v1.21.1   Manual     true
+install-f5jr2   loki-operator.v6.5.0                      Manual     true
+install-lszl8   web-terminal.v1.15.0                      Manual     true
 ```
 
-That second line is the problem. The Web Terminal's Subscription says `Automatic`, but its upgrade to `v1.10.0` got bundled into the same InstallPlan as Kiali, which has `Manual` approval. The whole plan is blocked. The Web Terminal won't update until someone manually approves the plan — and when they do, Kiali upgrades at the same time.
-
-To see exactly what a pending InstallPlan will install before approving:
+The `wide` output only shows the first CSV in the plan. To see everything a given InstallPlan will install:
 
 ```bash
-oc get installplan install-m8qzr -n openshift-operators \
+oc get installplan install-lszl8 -n openshift-operators \
   -o jsonpath='{.spec.clusterServiceVersionNames}'
 ```
 
 ```
-["web-terminal.v1.10.0","kiali-operator.v1.73.0"]
+["web-terminal.v1.15.0","devworkspace-operator.v0.40.0"]
 ```
 
-If there's only one item in that list, you're safe. If there are multiple, you're approving all of them together regardless of what each individual Subscription says.
+That's the problem, right there. `install-lszl8` looks like a Web Terminal plan, but it includes `devworkspace-operator` too. The DevWorkspace subscription is configured with `Automatic` approval — it's a dependency that OLM pulled in alongside the Web Terminal. But because they share a namespace, OLM bundled both into one InstallPlan. The DevWorkspace approval mode doesn't matter anymore; the whole plan was subject to whatever the most restrictive setting in the namespace required.
+
+If you had been waiting to approve Web Terminal while reviewing what changed, you would have also been holding back DevWorkspace — an operator you may not have realized was even in the plan.
 
 To approve and unblock:
 
 ```bash
-oc patch installplan install-m8qzr -n openshift-operators \
+oc patch installplan install-lszl8 -n openshift-operators \
   --type merge \
   --patch '{"spec":{"approved":true}}'
 ```
@@ -107,102 +118,7 @@ Both operators upgrade simultaneously. There's no mechanism in the current OLM A
 
 ---
 
-### Step 3: What Installing in a Dedicated Namespace Looks Like
-
-Installing each operator into its own namespace with its own `OperatorGroup` is the way to guarantee OLM creates isolated InstallPlans — they can never be bundled because they live in separate namespaces.
-
-The Web Terminal Operator needs cluster-wide access to inject a terminal into the console regardless of which namespace a user is working in, so the OperatorGroup uses an empty `spec` — the same cluster-wide scope as `global-operators`, just in a namespace of its own:
-
-```bash
-cat <<EOF | oc apply -f -
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: openshift-web-terminal
----
-apiVersion: operators.coreos.com/v1
-kind: OperatorGroup
-metadata:
-  name: web-terminal-operators
-  namespace: openshift-web-terminal
-spec: {}
----
-apiVersion: operators.coreos.com/v1alpha1
-kind: Subscription
-metadata:
-  name: web-terminal
-  namespace: openshift-web-terminal
-spec:
-  channel: fast
-  installPlanApproval: Automatic
-  name: web-terminal
-  source: redhat-operators
-  sourceNamespace: openshift-marketplace
-EOF
-```
-
-For operators that only need to watch a specific namespace, scope the `OperatorGroup` with `targetNamespaces` instead of an empty `spec`. But for anything that genuinely needs cluster-wide access, the empty `spec` is correct — the isolation comes from the namespace boundary, not from restricting the scope.
-
-The naming pattern here follows what Red Hat does with their own operators: `openshift-logging`, `openshift-storage`, `openshift-acm`. The namespace name describes the workload, not "operators" generically. One namespace, one operator, one OperatorGroup.
-
----
-
-### Step 4: Verify InstallPlan Isolation
-
-After applying the YAML, check that the Web Terminal gets its own independent InstallPlan:
-
-```bash
-oc get installplan -n openshift-web-terminal
-```
-
-```
-NAME            CSV                      APPROVAL    APPROVED
-install-ab3c1   web-terminal.v1.9.0      Automatic   true
-```
-
-Only one CSV. No other operators in the plan. Confirm the subscription resolved:
-
-```bash
-oc get subscription web-terminal -n openshift-web-terminal \
-  -o jsonpath='{.status.installedCSV}{"\n"}'
-```
-
-```
-web-terminal.v1.9.0
-```
-
-And verify the CSV reached `Succeeded`:
-
-```bash
-oc get csv -n openshift-web-terminal
-```
-
-```
-NAME                    DISPLAY                VERSION   PHASE
-web-terminal.v1.9.0     Web Terminal           1.9.0     Succeeded
-```
-
-From here, when `v1.10.0` becomes available, OLM creates a new InstallPlan in `openshift-web-terminal` only. Kiali — now in its own namespace — generates its own separate InstallPlan on its own schedule. Approving one has no effect on the other.
-
-If you switch the Web Terminal to `Manual` approval to review a specific upgrade, check what the pending plan contains before approving:
-
-```bash
-oc get installplan -n openshift-web-terminal -o yaml | grep -A5 "clusterServiceVersionNames"
-```
-
-```yaml
-spec:
-  clusterServiceVersionNames:
-  - web-terminal.v1.10.0
-  approval: Manual
-  approved: false
-```
-
-One name in that list. Approve it and you know exactly what changes.
-
----
-
-The `openshift-operators` namespace still has its uses — quick experiments, evaluating an operator before committing to an install pattern, or running something you genuinely don't care about managing long-term. But for anything you're running in production, or anything you need upgrade control over, give it a dedicated namespace. The marginal cost of three extra YAML lines per operator is nothing compared to debugging why your carefully set manual approval gate silently stopped working.
+The fix is straightforward: install each operator into its own namespace with its own `OperatorGroup`. InstallPlans are scoped to a namespace, so operators that live in separate namespaces can never be bundled together. The `openshift-operators` namespace still has its uses — quick experiments, evaluating an operator before committing to an install pattern, or running something you genuinely don't care about managing long-term. But for anything you're running in production, or anything you need upgrade control over, give it a dedicated namespace. The marginal cost of a few extra YAML lines per operator is nothing compared to debugging why your carefully set approval gate is silently non-functional.
 
 ---
 
