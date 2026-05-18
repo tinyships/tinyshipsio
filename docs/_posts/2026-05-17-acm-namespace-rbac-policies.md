@@ -187,7 +187,7 @@ NAME                          REMEDIATION ACTION   COMPLIANCE STATE   AGE
 policy-debug-namespace-rbac   enforce              NonCompliant       20s
 ```
 
-If no `openshift-debug-*` namespaces exist yet, ACM reports `NonCompliant` with a message like `namespaced object debug-team-edit of kind RoleBinding has no namespace specified from the policy namespaceSelector nor the object metadata`. This is expected — the `namespaceSelector` resolved to zero namespaces, so the controller has no target namespace for the RoleBinding and cannot verify compliance. The policy becomes `Compliant` as soon as you create a namespace that matches the prefix, which is what you will do in the next step.
+**NOTE:** If no `openshift-debug-*` namespaces exist yet, ACM reports `NonCompliant` with a message like `namespaced object debug-team-edit of kind RoleBinding has no namespace specified from the policy namespaceSelector nor the object metadata`. This is expected — the `namespaceSelector` resolved to zero namespaces, so the controller has no target namespace for the RoleBinding and cannot verify compliance. The policy becomes `Compliant` as soon as you create a namespace that matches the prefix, which is what you will do in the next step.
 
 ---
 
