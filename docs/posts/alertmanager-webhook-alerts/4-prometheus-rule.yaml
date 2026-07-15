@@ -1,0 +1,38 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: logspam-alerts
+  namespace: logspam
+spec:
+  groups:
+  - name: logspam.rules
+    rules:
+    - alert: LogspamContainerRestarted
+      expr: |
+        increase(kube_pod_container_status_restarts_total{namespace="logspam"}[5m]) > 0
+      for: 1m
+      labels:
+        severity: warning
+        app: log-generator
+      annotations:
+        summary: "Container restart detected in logspam namespace"
+        description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has restarted in the last 5 minutes."
+    - alert: LogspamHighMemory
+      expr: |
+        container_memory_working_set_bytes{namespace="logspam", container="log-generator"} > 100 * 1024 * 1024
+      for: 2m
+      labels:
+        severity: critical
+        app: log-generator
+      annotations:
+        summary: "High memory usage in logspam container"
+        description: "Container {{ $labels.container }} in pod {{ $labels.pod }} is using more than 100Mi of memory."
+    - alert: LogspamAlwaysFiring
+      expr: vector(1)
+      for: 1m
+      labels:
+        severity: info
+        app: log-generator
+      annotations:
+        summary: "Test alert - always firing"
+        description: "This alert always fires and is used to verify the alerting pipeline is working end-to-end."

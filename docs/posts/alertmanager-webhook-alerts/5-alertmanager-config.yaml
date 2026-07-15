@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1beta1
+kind: AlertmanagerConfig
+metadata:
+  name: logspam-alerts
+  namespace: logspam
+spec:
+  route:
+    groupBy:
+    - alertname
+    groupWait: 30s
+    groupInterval: 1m
+    repeatInterval: 5m
+    receiver: webhook
+  receivers:
+  - name: webhook
+    webhookConfigs:
+    - url: "http://webhook-receiver.logspam.svc.cluster.local:8080"
+      sendResolved: true

@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webhook-receiver
+  namespace: logspam
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webhook-receiver
+  template:
+    metadata:
+      labels:
+        app: webhook-receiver
+    spec:
+      containers:
+      - name: webhook-receiver
+        image: registry.access.redhat.com/ubi9/ubi:latest
+        command: ["python3", "-u", "-c"]
+        args:
+        - |
+          import json
+          from http.server import HTTPServer, BaseHTTPRequestHandler
+          from datetime import datetime, timezone
+
+          class WebhookHandler(BaseHTTPRequestHandler):
+              def do_POST(self):
+                  length = int(self.headers.get("Content-Length", 0))
+                  body = self.rfile.read(length)
+                  now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                  print("")
+                  print("=" * 50)
+                  print(f"  ALERT RECEIVED: {now}")
+                  print("=" * 50)
+                  try:
+                      data = json.loads(body)
+                      for alert in data.get("alerts", []):
+                          status = alert.get("status", "unknown")
+                          name = alert.get("labels", {}).get("alertname", "unknown")
+                          severity = alert.get("labels", {}).get("severity", "unknown")
+                          summary = alert.get("annotations", {}).get("summary", "")
+                          desc = alert.get("annotations", {}).get("description", "")
+                          print(f"  Status:      {status}")
+                          print(f"  Alert:       {name}")
+                          print(f"  Severity:    {severity}")
+                          print(f"  Summary:     {summary}")
+                          print(f"  Description: {desc}")
+                          print("-" * 50)
+                  except json.JSONDecodeError:
+                      print(body.decode("utf-8", errors="replace"))
+                  print("=" * 50)
+                  print("")
+                  self.send_response(200)
+                  self.send_header("Content-Type", "text/plain")
+                  self.end_headers()
+                  self.wfile.write(b"OK")
+
+              def log_message(self, format, *args):
+                  pass
+
+          print("Webhook receiver starting on port 8080...")
+          HTTPServer(("", 8080), WebhookHandler).serve_forever()
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "100m"
+            memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webhook-receiver
+  namespace: logspam
+spec:
+  selector:
+    app: webhook-receiver
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
