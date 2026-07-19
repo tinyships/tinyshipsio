@@ -561,9 +561,86 @@ The webhook receiver will log a `resolved` notification for `LogspamAlwaysFiring
 
 ---
 
+## Routing Platform Alerts to a Receiver
+
+Everything above covers **user-defined** alerts — PrometheusRule and AlertmanagerConfig resources that live in your namespace. But OpenShift also ships with hundreds of **platform alerts** out of the box: etcd latency, node pressure, API server errors, certificate expiry, cluster operator degraded, and more. These are pre-configured by the Cluster Monitoring Operator and fire automatically.
+
+The catch: platform alerts have no receivers configured by default. They show up in the Observe console under **Observe > Alerting**, but they do not go anywhere externally until you tell them to.
+
+Platform alert routing is configured differently from user-defined alerts. Instead of an `AlertmanagerConfig` CR (which is namespace-scoped to user workloads), platform alerts are routed through the **`alertmanager-main` Secret** in `openshift-monitoring`. This is the global AlertManager configuration and requires cluster-admin access.
+
+To see the current configuration:
+
+```bash
+oc -n openshift-monitoring get secret alertmanager-main \
+  -o jsonpath='{.data.alertmanager\.yaml}' | base64 -d
+```
+
+The default output looks something like this — a single `null` receiver that discards everything:
+
+```yaml
+global:
+  resolve_timeout: 5m
+route:
+  receiver: "null"
+  group_by:
+  - namespace
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+receivers:
+- name: "null"
+```
+
+To add a receiver, update the secret. For example, to route all critical platform alerts to a webhook:
+
+```yaml
+global:
+  resolve_timeout: 5m
+route:
+  receiver: default
+  group_by:
+  - namespace
+  - alertname
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  routes:
+  - match:
+      severity: critical
+    receiver: ops-webhook
+receivers:
+- name: default
+- name: ops-webhook
+  webhook_configs:
+  - url: "http://your-webhook-endpoint:8080"
+    send_resolved: true
+```
+
+Apply the updated config by encoding and patching the secret:
+
+```bash
+oc -n openshift-monitoring create secret generic alertmanager-main \
+  --from-file=alertmanager.yaml=alertmanager-config.yaml \
+  --dry-run=client -o yaml | oc apply -f -
+```
+
+You can also configure this through the web console under **Administration > Cluster Settings > Configuration > Alertmanager**, which provides forms for the five Red Hat supported receiver types: Email, Slack, PagerDuty, Webhook, and Microsoft Teams.
+
+Verify the configuration was applied:
+
+```bash
+oc -n openshift-monitoring get secret alertmanager-main \
+  -o jsonpath='{.data.alertmanager\.yaml}' | base64 -d
+```
+
+> **Platform vs. user-defined:** The `alertmanager-main` Secret handles platform alerts and is cluster-admin territory. The `AlertmanagerConfig` CR handles user-defined alerts and is namespace-scoped — developers can manage their own routing without admin help. Both feed into the same AlertManager pods in `openshift-monitoring`, but through different configuration paths.
+
+---
+
 ## Where To Go From Here
 
-The webhook receiver makes the alerting pipeline visible, but in production you would swap it for a real notification channel. The `AlertmanagerConfig` supports these receiver types natively:
+The webhook receiver makes the alerting pipeline visible, but in production you would swap it for a real notification channel. The `AlertmanagerConfig` supports these receiver types for user-defined alerts:
 
 | Receiver | Field in `spec.receivers` | Use case |
 |---|---|---|
@@ -571,8 +648,9 @@ The webhook receiver makes the alerting pipeline visible, but in production you 
 | PagerDuty | `pagerdutyConfigs` | On-call paging |
 | Email | `emailConfigs` | Ticketing, audit trails |
 | Webhook | `webhookConfigs` | Custom integrations, ServiceNow, generic HTTP |
+| Microsoft Teams | `msTeamsConfigs` | Team notifications |
 
-Each is a drop-in replacement in the `receivers` block — the route and PrometheusRule stay the same.
+Each is a drop-in replacement in the `receivers` block — the route and PrometheusRule stay the same. These five receiver types are the ones Red Hat explicitly documents and supports. The upstream AlertManager CRD includes additional receiver types (Discord, OpsGenie, Jira, Telegram, SNS, and others), but they are not covered under Red Hat support. For any integration not in the list above, the webhook receiver type is the supported escape hatch — point it at a middleware or bridge service that translates to your target system.
 
 For more context on the monitoring stack this builds on, the earlier posts in this series cover related ground:
 
