@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-monitoring-config
+  namespace: openshift-monitoring
+data:
+  config.yaml: |
+    enableUserWorkload: true
+    prometheusK8s:
+      externalLabels:
+        cluster_name: production-east
+      remoteWrite:
+      - url: "https://noc-prometheus.example.com:9090/api/v1/write"
+        tlsConfig:
+          insecureSkipVerify: false
+          ca:
+            name: noc-prometheus-ca
+            key: ca.crt
+        writeRelabelConfigs:
+        - sourceLabels: [__name__]
+          regex: 'node_.+|kube_node_.+|kube_pod_.+|container_cpu_.+|container_memory_.+|machine_.+|up|ALERTS|ALERTS_FOR_STATE'
+          action: keep
