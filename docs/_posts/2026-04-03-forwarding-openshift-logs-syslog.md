@@ -32,7 +32,7 @@ The other thing worth slowing down to consider: the `ClusterLogForwarder` can se
 
 The log generator is a UBI 9 container running a shell loop that emits messages at all four log levels — INFO, WARN, ERROR, and DEBUG — at random intervals. It gives you real, varied log output to forward and inspect.
 
-📄 [1-logspam.yaml](/posts/forwarding-openshift-logs-syslog/1-logspam.yaml)
+📄 [1-logspam.yaml](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/forwarding-openshift-logs-syslog/1-logspam.yaml)
 
 ```bash
 oc apply -f 1-logspam.yaml
@@ -113,7 +113,7 @@ oc logs -n logspam -l app=log-generator -f
 
 The syslog server runs rsyslog inside a UBI 9 image built in-cluster. Building rsyslog into the image at build time — rather than installing it at runtime — means the container runs as a non-root user (`UID 1001`) with no elevated privileges needed. Port 514 is a privileged port that requires root to bind, so the server listens on **port 1514** instead, which any non-root process can bind freely.
 
-📄 [2-syslog-server.yaml](/posts/forwarding-openshift-logs-syslog/2-syslog-server.yaml)
+📄 [2-syslog-server.yaml](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/forwarding-openshift-logs-syslog/2-syslog-server.yaml)
 
 This single file creates every resource needed to build and run the syslog server — from the namespace through to the services. Here's what's in it and why each piece exists.
 
@@ -330,7 +330,7 @@ The Logging Operator is a Red Hat supported operator available from OperatorHub.
 
 If you're new to how operators work — what OLM is doing, how channels and subscriptions relate, or how to explore what an operator registers — the post [How to Find, Install, and Explore an OpenShift Operator from the CLI](/2026/04/06/exploring-openshift-operators.html) covers all of that in detail.
 
-📄 [3-install-logging-operator.yaml](/posts/forwarding-openshift-logs-syslog/3-install-logging-operator.yaml)
+📄 [3-install-logging-operator.yaml](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/forwarding-openshift-logs-syslog/3-install-logging-operator.yaml)
 
 This file creates three resources that OLM needs to install an operator from the CLI:
 
@@ -410,7 +410,7 @@ cluster-logging.v6.5.0     Red Hat OpenShift Logging   6.5.0     Succeeded
 
 Logging 6.x introduced a new API group — `observability.openshift.io/v1` — and dropped the `ClusterLogging` resource entirely. The `ClusterLogForwarder` now owns the full configuration: what to collect, where to send it, and which service account the collector runs as.
 
-📄 [4-cluster-log-forwarder.yaml](/posts/forwarding-openshift-logs-syslog/4-cluster-log-forwarder.yaml)
+📄 [4-cluster-log-forwarder.yaml](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/forwarding-openshift-logs-syslog/4-cluster-log-forwarder.yaml)
 
 This file creates three resources: a `ServiceAccount` for the collector, a `ClusterRoleBinding` that grants it read access to application logs, and the `ClusterLogForwarder` itself.
 
@@ -518,7 +518,7 @@ That's the forwarding pipeline working end-to-end.
 
 If you want to simulate forwarding to a truly external syslog destination — or verify the NodePort is reachable from outside the cluster — the helper script patches the CLF URL to use the worker node IP and NodePort instead:
 
-📄 [5-get-external-url.sh](/posts/forwarding-openshift-logs-syslog/5-get-external-url.sh)
+📄 [5-get-external-url.sh](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/forwarding-openshift-logs-syslog/5-get-external-url.sh)
 
 ```bash
 bash 5-get-external-url.sh

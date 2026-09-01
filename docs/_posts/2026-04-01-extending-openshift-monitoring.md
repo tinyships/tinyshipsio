@@ -48,7 +48,7 @@ A Python script authenticates against the Thanos Querier route using your existi
 - Python 3.10+
 - `pip install requests`
 
-**Script:** [query_thanos.py](/posts/extending-openshift-monitoring/parsePrometheusData/query_thanos.py)
+**Script:** [query_thanos.py](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/extending-openshift-monitoring/parsePrometheusData/query_thanos.py)
 
 **Run it:**
 
@@ -115,7 +115,7 @@ A full Grafana UI — editable dashboards, panel-level CSV export, ad-hoc PromQL
 
 #### Step 1: Create a Namespace and Service Account
 
-📄 [1-configureNamespaceSA.sh](/posts/extending-openshift-monitoring/customGrafana/1-configureNamespaceSA.sh)
+📄 [1-configureNamespaceSA.sh](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/extending-openshift-monitoring/customGrafana/1-configureNamespaceSA.sh)
 
 ```bash
 oc create namespace my-custom-metrics
@@ -132,7 +132,7 @@ The `cluster-monitoring-view` role allows the service account to read metrics ac
 
 #### Step 2: Create a Long-Lived Token Secret
 
-📄 [2-SA-secret.yaml](/posts/extending-openshift-monitoring/customGrafana/2-SA-secret.yaml)
+📄 [2-SA-secret.yaml](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/extending-openshift-monitoring/customGrafana/2-SA-secret.yaml)
 
 ```bash
 oc apply -f 2-SA-secret.yaml
@@ -154,7 +154,7 @@ OCP 4.11+ deprecated `oc sa get-token`. A secret of type `kubernetes.io/service-
 
 #### Step 3: Install the Grafana Operator
 
-📄 [3-install-Grafana.yaml](/posts/extending-openshift-monitoring/customGrafana/3-install-Grafana.yaml)
+📄 [3-install-Grafana.yaml](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/extending-openshift-monitoring/customGrafana/3-install-Grafana.yaml)
 
 ```bash
 oc apply -f 3-install-Grafana.yaml
@@ -193,7 +193,7 @@ oc get pods -n my-custom-metrics -w
 
 #### Step 4: Deploy a Grafana Instance
 
-📄 [4-create-Grafana-instance.yaml](/posts/extending-openshift-monitoring/customGrafana/4-create-Grafana-instance.yaml)
+📄 [4-create-Grafana-instance.yaml](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/extending-openshift-monitoring/customGrafana/4-create-Grafana-instance.yaml)
 
 ```bash
 oc apply -f 4-create-Grafana-instance.yaml
@@ -223,7 +223,7 @@ spec:
 
 #### Step 5: Connect Grafana to the Thanos Querier
 
-📄 [5-create-Grafana-datasource.yaml](/posts/extending-openshift-monitoring/customGrafana/5-create-Grafana-datasource.yaml)
+📄 [5-create-Grafana-datasource.yaml](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/extending-openshift-monitoring/customGrafana/5-create-Grafana-datasource.yaml)
 
 ```bash
 oc apply -f 5-create-Grafana-datasource.yaml
@@ -268,7 +268,7 @@ A few things worth understanding:
 
 #### Step 6: Get Your Credentials and Log In
 
-📄 [6-get-grafana-creds.sh](/posts/extending-openshift-monitoring/customGrafana/6-get-grafana-creds.sh)
+📄 [6-get-grafana-creds.sh](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/extending-openshift-monitoring/customGrafana/6-get-grafana-creds.sh)
 
 ```bash
 bash 6-get-grafana-creds.sh

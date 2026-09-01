@@ -34,7 +34,7 @@ Two operators are needed: the Red Hat Loki Operator and the community Grafana Op
 
 The Grafana Operator installs namespace-scoped into its own dedicated namespace. Both are installed into dedicated namespaces rather than the default `openshift-operators`. The reasons for that are worth understanding — a dedicated post covering exactly why is coming soon.
 
-📄 [1-install-operators.yaml](/posts/visualizing-openshift-logs-grafana/1-install-operators.yaml)
+📄 [1-install-operators.yaml](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/visualizing-openshift-logs-grafana/1-install-operators.yaml)
 
 This file creates six resources to install both operators:
 
@@ -153,7 +153,7 @@ An `ObjectBucketClaim` is how you request a bucket from NooBaa. When this is cre
 
 #### LokiStack
 
-📄 [3-lokistack.yaml](/posts/visualizing-openshift-logs-grafana/3-lokistack.yaml)
+📄 [3-lokistack.yaml](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/visualizing-openshift-logs-grafana/3-lokistack.yaml)
 
 ```yaml
 apiVersion: loki.grafana.com/v1
@@ -179,7 +179,7 @@ spec:
 
 #### The Script
 
-📄 [2-lokistack-setup.sh](/posts/visualizing-openshift-logs-grafana/2-lokistack-setup.sh)
+📄 [2-lokistack-setup.sh](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/visualizing-openshift-logs-grafana/2-lokistack-setup.sh)
 
 The script applies the two resources above in the correct sequence:
 
@@ -232,7 +232,7 @@ oc get pods -n openshift-logging -l app.kubernetes.io/instance=logging-loki
 
 ### Step 3: Deploy Grafana
 
-📄 [4-grafana.yaml](/posts/visualizing-openshift-logs-grafana/4-grafana.yaml)
+📄 [4-grafana.yaml](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/visualizing-openshift-logs-grafana/4-grafana.yaml)
 
 This file creates five resources in the `grafana-logging` namespace.
 
@@ -361,7 +361,7 @@ Datasource was successfully applied to 1 instances
 
 ### Step 4: Update the CLF to Dual-Output
 
-📄 [5-clf-dual-output.yaml](/posts/visualizing-openshift-logs-grafana/5-clf-dual-output.yaml)
+📄 [5-clf-dual-output.yaml](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/visualizing-openshift-logs-grafana/5-clf-dual-output.yaml)
 
 This file replaces the `ClusterLogForwarder` from the previous post with a dual-output version, and adds a `ClusterRoleBinding` the collector needs to write to LokiStack.
 
@@ -486,7 +486,7 @@ If `data` is an empty array, the collector has not pushed anything yet — wait 
 
 ### Step 5: Query Logs in Grafana
 
-📄 [6-get-grafana-url.sh](/posts/visualizing-openshift-logs-grafana/6-get-grafana-url.sh)
+📄 [6-get-grafana-url.sh](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/visualizing-openshift-logs-grafana/6-get-grafana-url.sh)
 
 ```bash
 bash 6-get-grafana-url.sh
@@ -514,7 +514,7 @@ Select the **Loki** datasource and query:
 
 You will see the same log stream from the `logspam` generator — timestamped, color-coded by log level, and filterable by label or field.
 
-![Grafana Explore showing logspam logs from LokiStack](/posts/visualizing-openshift-logs-grafana/grafana-explore-logspam-logs.png)
+![Grafana Explore showing logspam logs from LokiStack](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/visualizing-openshift-logs-grafana/grafana-explore-logspam-logs.png)
 
 The syslog server is receiving the same stream in parallel. Both outputs are driven by the same `ClusterLogForwarder` pipeline — add more outputs to fan logs to additional destinations without touching your workloads.
 

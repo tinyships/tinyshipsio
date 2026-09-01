@@ -35,7 +35,7 @@ This post uses a webhook receiver because it makes the entire pipeline visible. 
 
 OpenShift disables user-workload monitoring by default. Enabling it requires a ConfigMap in the `openshift-monitoring` namespace. This is a cluster-admin operation — once it is done, individual teams can create their own alerting rules without admin help.
 
-📄 [1-enable-user-workload-monitoring.yaml](/posts/alertmanager-webhook-alerts/1-enable-user-workload-monitoring.yaml)
+📄 [1-enable-user-workload-monitoring.yaml](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/alertmanager-webhook-alerts/1-enable-user-workload-monitoring.yaml)
 
 ```bash
 oc apply -f 1-enable-user-workload-monitoring.yaml
@@ -82,7 +82,7 @@ On HA clusters you will see two replicas of `prometheus-user-workload` and `than
 
 This is the same `logspam` workload used in the [syslog forwarding post](/2026/04/03/forwarding-openshift-logs-syslog.html) — a UBI 9 container running a shell loop that emits log messages at random levels and intervals. If you already have it running from that post, skip this step.
 
-📄 [2-logspam-with-metrics.yaml](/posts/alertmanager-webhook-alerts/2-logspam-with-metrics.yaml)
+📄 [2-logspam-with-metrics.yaml](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/alertmanager-webhook-alerts/2-logspam-with-metrics.yaml)
 
 ```bash
 oc apply -f 2-logspam-with-metrics.yaml
@@ -166,7 +166,7 @@ oc logs -n logspam -l app=log-generator -f --tail=3
 
 The webhook receiver is a lightweight Python HTTP server running inside a UBI 9 container. It listens on port 8080, accepts POST requests from AlertManager, parses the alert payload, and prints a formatted summary to stdout. That means you can see every alert that arrives by tailing the pod logs.
 
-📄 [3-webhook-receiver.yaml](/posts/alertmanager-webhook-alerts/3-webhook-receiver.yaml)
+📄 [3-webhook-receiver.yaml](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/alertmanager-webhook-alerts/3-webhook-receiver.yaml)
 
 ```bash
 oc apply -f 3-webhook-receiver.yaml
@@ -311,7 +311,7 @@ The receiver is working. Now it needs alerts to receive.
 
 A `PrometheusRule` defines alerting rules that the user-workload Prometheus evaluates. When an expression evaluates to true for the specified `for` duration, the alert transitions to `firing` and AlertManager picks it up.
 
-📄 [4-prometheus-rule.yaml](/posts/alertmanager-webhook-alerts/4-prometheus-rule.yaml)
+📄 [4-prometheus-rule.yaml](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/alertmanager-webhook-alerts/4-prometheus-rule.yaml)
 
 ```bash
 oc apply -f 4-prometheus-rule.yaml
@@ -410,7 +410,7 @@ The `LogspamAlwaysFiring` alert should show `firing` within 1-2 minutes. The oth
 
 An `AlertmanagerConfig` tells AlertManager how to route alerts from a specific namespace to specific receivers. It is namespace-scoped — a config in `logspam` only affects alerts from `PrometheusRule` resources in `logspam`.
 
-📄 [5-alertmanager-config.yaml](/posts/alertmanager-webhook-alerts/5-alertmanager-config.yaml)
+📄 [5-alertmanager-config.yaml](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/alertmanager-webhook-alerts/5-alertmanager-config.yaml)
 
 ```bash
 oc apply -f 5-alertmanager-config.yaml
@@ -485,7 +485,7 @@ The always-firing test alert proves the pipeline works, but it is more satisfyin
 
 > Why not just delete the pod? Deleting a pod creates a brand new pod with a restart count of zero. The `kube_pod_container_status_restarts_total` metric only increments when kubelet restarts a container within an existing pod — a crash, not a replacement. Sending a signal crashes the container without destroying the pod, so kubelet restarts it and the counter goes up.
 
-📄 [6-trigger-restart.sh](/posts/alertmanager-webhook-alerts/6-trigger-restart.sh)
+📄 [6-trigger-restart.sh](https://github.com/tinyships/tinyshipsio/blob/main/docs/posts/alertmanager-webhook-alerts/6-trigger-restart.sh)
 
 ```bash
 bash 6-trigger-restart.sh

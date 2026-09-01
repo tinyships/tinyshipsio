@@ -18,6 +18,9 @@ __pycache__/
 *.pyo
 .env
 
+# Disk images
+*.qcow2
+
 # Archives — ignore loose zips but allow post download artifacts
 *.zip
 !docs/posts/**/*.zip
