@@ -1,0 +1,48 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: policy-curate-templates
+  namespace: acm-policies
+spec:
+  remediationAction: enforce
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: curate-templates
+        spec:
+          remediationAction: enforce
+          severity: medium
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: samples.operator.openshift.io/v1
+                kind: Config
+                metadata:
+                  name: cluster
+                spec:
+                  skippedTemplates:
+                    - cakephp-mysql-example
+            - complianceType: mustnothave
+              objectDefinition:
+                apiVersion: template.openshift.io/v1
+                kind: Template
+                metadata:
+                  name: cakephp-mysql-example
+                  namespace: openshift
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-curate-templates
+  namespace: acm-policies
+placementRef:
+  name: all-managed-clusters
+  kind: Placement
+  apiGroup: cluster.open-cluster-management.io
+subjects:
+  - name: policy-curate-templates
+    kind: Policy
+    apiGroup: policy.open-cluster-management.io

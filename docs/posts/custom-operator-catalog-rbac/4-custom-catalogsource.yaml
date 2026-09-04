@@ -1,0 +1,13 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: curated-operators
+  namespace: openshift-marketplace
+spec:
+  sourceType: grpc
+  image: image-registry.openshift-image-registry.svc:5000/openshift-marketplace/curated-operator-catalog:v4.22.10
+  displayName: Curated Operators
+  publisher: Platform Team
+  updateStrategy:
+    registryPoll:
+      interval: 30m

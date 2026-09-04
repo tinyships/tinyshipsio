@@ -1,0 +1,8 @@
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: webapp-team
+  namespace: webapp-team
+spec:
+  targetNamespaces:
+  - webapp-team

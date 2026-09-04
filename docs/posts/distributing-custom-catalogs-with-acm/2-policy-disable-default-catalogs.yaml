@@ -1,0 +1,48 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: policy-disable-default-catalogs
+  namespace: acm-policies
+spec:
+  remediationAction: enforce
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: disable-default-catalogs
+        spec:
+          remediationAction: enforce
+          severity: medium
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: config.openshift.io/v1
+                kind: OperatorHub
+                metadata:
+                  name: cluster
+                spec:
+                  sources:
+                    - disabled: true
+                      name: certified-operators
+                    - disabled: true
+                      name: community-operators
+                    - disabled: true
+                      name: redhat-marketplace
+                    - disabled: true
+                      name: redhat-operators
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-disable-default-catalogs
+  namespace: acm-policies
+placementRef:
+  name: all-managed-clusters
+  kind: Placement
+  apiGroup: cluster.open-cluster-management.io
+subjects:
+  - name: policy-disable-default-catalogs
+    kind: Policy
+    apiGroup: policy.open-cluster-management.io

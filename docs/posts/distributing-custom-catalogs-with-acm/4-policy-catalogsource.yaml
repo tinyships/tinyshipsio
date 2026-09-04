@@ -1,0 +1,49 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: policy-catalogsource
+  namespace: acm-policies
+spec:
+  remediationAction: enforce
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: curated-catalogsource
+        spec:
+          remediationAction: enforce
+          severity: medium
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: operators.coreos.com/v1alpha1
+                kind: CatalogSource
+                metadata:
+                  name: curated-operators
+                  namespace: openshift-marketplace
+                spec:
+                  sourceType: grpc
+                  image: quay.io/tinyships/curated-operator-catalog:v4.22.10
+                  displayName: Curated Operators
+                  publisher: Platform Team
+                  secrets:
+                    - curated-catalog-pull
+                  updateStrategy:
+                    registryPoll:
+                      interval: 30m
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-catalogsource
+  namespace: acm-policies
+placementRef:
+  name: all-managed-clusters
+  kind: Placement
+  apiGroup: cluster.open-cluster-management.io
+subjects:
+  - name: policy-catalogsource
+    kind: Policy
+    apiGroup: policy.open-cluster-management.io

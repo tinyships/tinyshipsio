@@ -1,0 +1,43 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: policy-disable-helm-chart-repo
+  namespace: acm-policies
+spec:
+  remediationAction: enforce
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: disable-helm-chart-repo
+        spec:
+          remediationAction: enforce
+          severity: medium
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: helm.openshift.io/v1beta1
+                kind: HelmChartRepository
+                metadata:
+                  name: openshift-helm-charts
+                spec:
+                  name: OpenShift Helm Charts
+                  connectionConfig:
+                    url: https://charts.openshift.io
+                  disabled: true
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-disable-helm-chart-repo
+  namespace: acm-policies
+placementRef:
+  name: all-managed-clusters
+  kind: Placement
+  apiGroup: cluster.open-cluster-management.io
+subjects:
+  - name: policy-disable-helm-chart-repo
+    kind: Policy
+    apiGroup: policy.open-cluster-management.io
