@@ -536,7 +536,7 @@ The script reads the IP of a worker node, constructs the full `tcp://<node-ip>:3
 
 That's the forwarding pipeline complete. Logs leave your cluster, arrive at a syslog server you control, and the only thing connecting them is a `ClusterLogForwarder` and a service endpoint. In a real deployment, swap the internal service URL for your centralized syslog server — Splunk, Graylog, a managed SIEM — and nothing else changes.
 
-If you want to go further and query those same logs interactively inside the cluster, the next post covers adding LokiStack and Grafana to the same setup: [Querying OpenShift Logs with LokiStack and Grafana](/2026/04/13/visualizing-openshift-logs-grafana.html).
+If you want to go further and query those same logs interactively inside the cluster, the next post covers adding LokiStack and Grafana to the same setup: [Querying OpenShift Logs with LokiStack and Grafana](/2026/04/08/visualizing-openshift-logs-grafana.html).
 
 ---
 

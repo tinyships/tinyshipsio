@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: snmp-notifier
+  namespace: snmp-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: snmp-notifier
+  template:
+    metadata:
+      labels:
+        app: snmp-notifier
+    spec:
+      containers:
+      - name: snmp-notifier
+        image: docker.io/maxwo/snmp-notifier:v2.1.0
+        args:
+        - --trap.description-template=/etc/snmp_notifier/description-template.tpl
+        - --snmp.destination=snmptrapd.snmp-demo.svc.cluster.local:1162
+        - --snmp.version=V2c
+        - --snmp.community=public
+        - --alert.default-severity=critical
+        - --alert.severities=critical,warning,info
+        ports:
+        - containerPort: 9464
+          name: http
+          protocol: TCP
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "100m"
+            memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: snmp-notifier
+  namespace: snmp-demo
+spec:
+  selector:
+    app: snmp-notifier
+  ports:
+  - name: http
+    port: 9464
+    protocol: TCP
+    targetPort: 9464

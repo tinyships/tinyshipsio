@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1beta1
+kind: AlertmanagerConfig
+metadata:
+  name: snmp-alerts
+  namespace: snmp-demo
+spec:
+  route:
+    groupBy:
+    - alertname
+    groupWait: 30s
+    groupInterval: 1m
+    repeatInterval: 5m
+    receiver: snmp
+  receivers:
+  - name: snmp
+    webhookConfigs:
+    - url: "http://snmp-notifier.snmp-demo.svc.cluster.local:9464/alerts"
+      sendResolved: true

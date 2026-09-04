@@ -1,0 +1,25 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: snmp-test-alerts
+  namespace: snmp-demo
+spec:
+  groups:
+  - name: snmp-demo.rules
+    rules:
+    - alert: SNMPTestAlwaysFiring
+      expr: vector(1)
+      for: 1m
+      labels:
+        severity: info
+      annotations:
+        summary: "SNMP test alert - always firing"
+        description: "This alert always fires and is used to verify the SNMP trap pipeline is working end-to-end."
+    - alert: SNMPTestHighSeverity
+      expr: vector(1)
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "SNMP critical test alert"
+        description: "A critical severity test alert to verify severity mapping in SNMP traps."

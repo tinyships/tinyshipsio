@@ -1,0 +1,181 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: snmp-demo
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: snmptrapd
+  namespace: snmp-demo
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: snmptrapd
+  namespace: snmp-demo
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: snmptrapd:latest
+  source:
+    type: Dockerfile
+    dockerfile: |
+      FROM registry.access.redhat.com/ubi9/ubi:latest
+      RUN dnf install -y net-snmp net-snmp-utils && dnf clean all && rm -rf /var/cache/dnf
+      RUN mkdir -p /usr/share/snmp/mibs
+      USER 1001
+  strategy:
+    type: Docker
+    dockerStrategy: {}
+  triggers:
+  - type: ConfigChange
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: snmptrapd-config
+  namespace: snmp-demo
+data:
+  snmptrapd.conf: |
+    disableAuthorization yes
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: snmp-notifier-mib
+  namespace: snmp-demo
+data:
+  SNMP-NOTIFIER-MIB.my: |
+    SNMP-NOTIFIER-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+       MODULE-IDENTITY, enterprises, OBJECT-TYPE, NOTIFICATION-TYPE FROM SNMPv2-SMI
+       DisplayString FROM SNMPv2-TC;
+
+    snmpNotifier MODULE-IDENTITY
+       LAST-UPDATED "202301070000Z"
+       ORGANIZATION "SNMP Notifier"
+       CONTACT-INFO
+          "SNMP Notifier
+          https://github.com/maxwo/snmp_notifier/"
+       DESCRIPTION
+          "MIB for SNMP Traps sent by the SNMP Notifier"
+       REVISION "202301070000Z"
+       DESCRIPTION "Added sub objects to the alerts subtree"
+       REVISION "201912260000Z"
+       DESCRIPTION "First revision"
+    ::= { enterprises 98789 }
+
+    snmpNotifierAlertsObjects OBJECT IDENTIFIER ::= { snmpNotifier 2 }
+
+    snmpNotifierAlertsUserObjects OBJECT IDENTIFIER ::= { snmpNotifier 3 }
+
+    snmpNotifierAlertId OBJECT-TYPE
+       SYNTAX      DisplayString
+       MAX-ACCESS  accessible-for-notify
+       STATUS      current
+       DESCRIPTION "The ID of the SNMP notifier alert."
+    ::= { snmpNotifierAlertsObjects 1 }
+
+    snmpNotifierAlertSeverity OBJECT-TYPE
+       SYNTAX      DisplayString
+       MAX-ACCESS  accessible-for-notify
+       STATUS      current
+       DESCRIPTION "The severity of the SNMP notifier alert."
+    ::= { snmpNotifierAlertsObjects 2 }
+
+    snmpNotifierAlertDescription OBJECT-TYPE
+       SYNTAX      DisplayString
+       MAX-ACCESS  accessible-for-notify
+       STATUS      current
+       DESCRIPTION "The description of the SNMP notifier alert."
+    ::= { snmpNotifierAlertsObjects 3 }
+
+    snmpNotifierDefaultTrap NOTIFICATION-TYPE
+       OBJECTS {
+          snmpNotifierAlertId,
+          snmpNotifierAlertSeverity,
+          snmpNotifierAlertDescription
+       }
+       STATUS current
+       DESCRIPTION "The default SNMP notifier notification"
+       ::= { snmpNotifier 1 }
+    END
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: snmptrapd-startup
+  namespace: snmp-demo
+data:
+  start.sh: |
+    #!/bin/bash
+    set -e
+    echo "snmptrapd starting, listening on UDP 1162..."
+    exec snmptrapd -f -Lo -m ALL -M +/etc/snmp/mibs 1162
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: snmptrapd
+  namespace: snmp-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: snmptrapd
+  template:
+    metadata:
+      labels:
+        app: snmptrapd
+    spec:
+      containers:
+      - name: snmptrapd
+        image: image-registry.openshift-image-registry.svc:5000/snmp-demo/snmptrapd:latest
+        command: ["/bin/bash", "/startup/start.sh"]
+        ports:
+        - containerPort: 1162
+          name: snmp-udp
+          protocol: UDP
+        volumeMounts:
+        - name: startup
+          mountPath: /startup
+        - name: snmptrapd-config
+          mountPath: /etc/snmp/snmptrapd.conf
+          subPath: snmptrapd.conf
+        - name: snmp-notifier-mib
+          mountPath: /etc/snmp/mibs
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "100m"
+            memory: "128Mi"
+      volumes:
+      - name: startup
+        configMap:
+          name: snmptrapd-startup
+          defaultMode: 0755
+      - name: snmptrapd-config
+        configMap:
+          name: snmptrapd-config
+      - name: snmp-notifier-mib
+        configMap:
+          name: snmp-notifier-mib
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: snmptrapd
+  namespace: snmp-demo
+spec:
+  selector:
+    app: snmptrapd
+  ports:
+  - name: snmp-udp
+    port: 1162
+    protocol: UDP
+    targetPort: 1162
