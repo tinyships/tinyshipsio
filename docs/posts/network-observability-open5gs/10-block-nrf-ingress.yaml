@@ -1,0 +1,12 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: block-nrf-ingress
+  namespace: open5gs-core
+spec:
+  podSelector:
+    matchLabels:
+      app: nrf
+  policyTypes:
+    - Ingress
+  ingress: []

@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenShift Observability Overview</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css">
+<style>
+  :root {
+    --r-background-color: #1a1a2e;
+    --r-main-color: #e0e0e0;
+    --r-heading-color: #ffffff;
+    --r-link-color: #4fc3f7;
+  }
+  .reveal { font-size: 28px; }
+  .reveal h1 { font-size: 1.8em; color: #4fc3f7; }
+  .reveal h2 { font-size: 1.4em; color: #4fc3f7; }
+  .reveal h3 { font-size: 1.1em; color: #81d4fa; }
+  .reveal table { font-size: 0.65em; margin: 0 auto; border-collapse: collapse; }
+  .reveal table th { background: #0d47a1; color: #fff; padding: 6px 12px; }
+  .reveal table td { padding: 5px 12px; border-bottom: 1px solid #333; }
+  .reveal table tr:nth-child(even) { background: rgba(255,255,255,0.04); }
+  .reveal .default-tag { background: #2e7d32; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; font-weight: bold; }
+  .reveal .optional-tag { background: #e65100; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; font-weight: bold; }
+  .reveal .tp-tag { background: #6a1b9a; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; font-weight: bold; }
+  .reveal .deprecated-tag { background: #b71c1c; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; font-weight: bold; }
+  .reveal ul { font-size: 0.85em; }
+  .reveal li { margin-bottom: 0.3em; }
+  .reveal .small { font-size: 0.7em; color: #aaa; }
+  .reveal .columns { display: flex; gap: 30px; }
+  .reveal .columns > div { flex: 1; }
+  .reveal blockquote { background: rgba(79,195,247,0.1); border-left: 4px solid #4fc3f7; padding: 10px 20px; font-size: 0.85em; }
+  .reveal .highlight-box { background: rgba(46,125,50,0.15); border: 1px solid #2e7d32; border-radius: 8px; padding: 15px; margin: 10px 0; }
+  .reveal .warn-box { background: rgba(230,81,0,0.15); border: 1px solid #e65100; border-radius: 8px; padding: 15px; margin: 10px 0; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- Title -->
+<section>
+  <h1>OpenShift Observability</h1>
+  <h3>Monitoring, Logging, Alerting, and Tracing</h3>
+  <p class="small">An operations team guide to what ships by default, what needs to be installed,<br>and what your options are</p>
+  <p class="small">OpenShift 4.14 &ndash; 4.20</p>
+</section>
+
+<!-- Agenda -->
+<section>
+  <h2>Agenda</h2>
+  <ol>
+    <li>The Big Picture &mdash; what is default vs. optional</li>
+    <li>Monitoring &amp; Metrics</li>
+    <li>Logging</li>
+    <li>Alerting</li>
+    <li>Distributed Tracing</li>
+    <li>Network Observability</li>
+    <li>Power Monitoring</li>
+    <li>Ops Checklist &mdash; what you need to configure</li>
+  </ol>
+</section>
+
+<!-- Big Picture -->
+<section>
+  <h2>Default vs. Optional</h2>
+  <table>
+    <thead>
+      <tr><th>Component</th><th>Default?</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Cluster Monitoring (Prometheus, AlertManager, Thanos)</td><td><span class="default-tag">DEFAULT</span></td><td>GA</td></tr>
+      <tr><td>User Workload Monitoring</td><td><span class="optional-tag">ENABLE</span></td><td>GA</td></tr>
+      <tr><td>Cluster Observability Operator (UI plugins, Perses)</td><td><span class="optional-tag">INSTALL</span></td><td>GA (4.18+)</td></tr>
+      <tr><td>Logging Operator + Loki Operator</td><td><span class="optional-tag">INSTALL</span></td><td>GA</td></tr>
+      <tr><td>OpenTelemetry + Tempo (tracing)</td><td><span class="optional-tag">INSTALL</span></td><td>GA</td></tr>
+      <tr><td>Network Observability Operator</td><td><span class="optional-tag">INSTALL</span></td><td>GA, included</td></tr>
+      <tr><td>Power Monitoring (Kepler)</td><td><span class="optional-tag">INSTALL</span></td><td><span class="tp-tag">TECH PREVIEW</span></td></tr>
+    </tbody>
+  </table>
+  <p class="small">Only cluster monitoring ships pre-installed. Everything else is operator-based and opt-in.</p>
+</section>
+
+<!-- ==================== MONITORING ==================== -->
+<section>
+  <section>
+    <h1>Monitoring &amp; Metrics</h1>
+    <p><span class="default-tag">SHIPS BY DEFAULT</span></p>
+  </section>
+
+  <section>
+    <h2>What Ships on Day 1</h2>
+    <p>The <strong>Cluster Monitoring Operator (CMO)</strong> deploys everything in <code>openshift-monitoring</code>:</p>
+    <div class="columns">
+      <div>
+        <h3>Collection &amp; Storage</h3>
+        <ul>
+          <li><strong>Prometheus</strong> (2 replicas, HA)</li>
+          <li><strong>kube-state-metrics</strong></li>
+          <li><strong>openshift-state-metrics</strong></li>
+          <li><strong>node-exporter</strong> (DaemonSet)</li>
+          <li>15-day default retention</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Query &amp; Routing</h3>
+        <ul>
+          <li><strong>Thanos Querier</strong> (2 replicas)</li>
+          <li><strong>AlertManager</strong> (2 replicas)</li>
+          <li><strong>Prometheus Adapter</strong> (HPA)</li>
+          <li><strong>Telemeter Client</strong></li>
+          <li><strong>Observe console</strong> (dashboards + alerts)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="warn-box">
+      Default storage is <strong>emptyDir</strong> (ephemeral). Configure persistent volumes for production.
+    </div>
+  </section>
+
+  <section>
+    <h2>User Workload Monitoring</h2>
+    <p><span class="optional-tag">MUST ENABLE</span> &mdash; one ConfigMap, cluster-admin required</p>
+    <pre><code>apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-monitoring-config
+  namespace: openshift-monitoring
+data:
+  config.yaml: |
+    enableUserWorkload: true</code></pre>
+    <p>Adds to <code>openshift-user-workload-monitoring</code>:</p>
+    <ul>
+      <li><strong>Prometheus</strong> &mdash; scrapes ServiceMonitor/PodMonitor in user namespaces</li>
+      <li><strong>Thanos Ruler</strong> &mdash; evaluates PrometheusRule resources</li>
+      <li><strong>Prometheus Operator</strong> &mdash; manages the user-workload stack</li>
+    </ul>
+    <p class="small">Default retention: 24 hours (configurable). Does not require cluster-admin for day-to-day use after enabling.</p>
+  </section>
+
+  <section>
+    <h2>Metrics Export &amp; Query Protocols</h2>
+    <table>
+      <thead>
+        <tr><th>Protocol</th><th>Use Case</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>PromQL</strong></td><td>Native query language &mdash; Observe console, Grafana, CLI</td></tr>
+        <tr><td><strong>Thanos StoreAPI (gRPC)</strong></td><td>Internal aggregation across Prometheus replicas</td></tr>
+        <tr><td><strong>Prometheus Remote Write</strong></td><td>Push metrics to external long-term storage</td></tr>
+        <tr><td><strong>Metrics API</strong></td><td>HPA/VPA &mdash; via Prometheus Adapter</td></tr>
+        <tr><td><strong>OTLP metrics</strong></td><td>Emerging &mdash; OTLP receiver in 4.20+</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Remote Write Targets</h2>
+    <p>Any endpoint implementing the <strong>Prometheus Remote Write API</strong>:</p>
+    <div class="columns">
+      <div>
+        <h3>Self-Hosted</h3>
+        <ul>
+          <li>Thanos Receiver</li>
+          <li>Grafana Mimir</li>
+          <li>Cortex</li>
+          <li>VictoriaMetrics</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Cloud Managed</h3>
+        <ul>
+          <li>Amazon Managed Prometheus</li>
+          <li>Azure Monitor (ARO)</li>
+          <li>Google Cloud Managed Prometheus</li>
+          <li>Any remote-write endpoint</li>
+        </ul>
+      </div>
+    </div>
+    <p class="small">Configured via <code>prometheusK8s.remoteWrite</code> in cluster-monitoring-config (platform)<br>
+    or <code>prometheus.remoteWrite</code> in user-workload-monitoring-config (user workloads).</p>
+  </section>
+</section>
+
+<!-- ==================== LOGGING ==================== -->
+<section>
+  <section>
+    <h1>Logging</h1>
+    <p><span class="optional-tag">REQUIRES OPERATOR INSTALL</span></p>
+  </section>
+
+  <section>
+    <h2>Nothing Ships by Default</h2>
+    <p>You install from OperatorHub:</p>
+    <table>
+      <thead>
+        <tr><th>Operator</th><th>Purpose</th><th>Source</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Red Hat OpenShift Logging</strong></td><td>Vector collector + ClusterLogForwarder</td><td>redhat-operators</td></tr>
+        <tr><td><strong>Loki Operator</strong></td><td>LokiStack for in-cluster log storage</td><td>redhat-operators</td></tr>
+        <tr><td><strong>Cluster Observability Operator</strong></td><td>Logging UI plugin (replaces Kibana)</td><td>redhat-operators</td></tr>
+      </tbody>
+    </table>
+    <div class="warn-box">
+      <strong>Deprecated &amp; Removed:</strong> Fluentd (removed in Logging 6.0), Elasticsearch Operator (removed Nov 2025), Kibana (removed in 6.0).
+      <br>If you are on OCP 4.18+, <strong>Vector + LokiStack</strong> is the only supported path.
+    </div>
+  </section>
+
+  <section>
+    <h2>Collector: Vector</h2>
+    <table>
+      <thead>
+        <tr><th></th><th>Vector (current)</th><th>Fluentd (removed)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Status</strong></td><td>Only option in Logging 6.x</td><td><span class="deprecated-tag">REMOVED</span> in 6.0</td></tr>
+        <tr><td><strong>Language</strong></td><td>Rust</td><td>Ruby</td></tr>
+        <tr><td><strong>Performance</strong></td><td>Significantly lower CPU/memory</td><td>Higher overhead</td></tr>
+        <tr><td><strong>Deployment</strong></td><td>DaemonSet, auto-managed by CLF</td><td>&mdash;</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>ClusterLogForwarder &mdash; Input Types</h2>
+    <table>
+      <thead>
+        <tr><th>Input</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>application</strong></td><td>Logs from user-deployed workloads (stdout/stderr)</td></tr>
+        <tr><td><strong>infrastructure</strong></td><td>Node journal + OpenShift system components</td></tr>
+        <tr><td><strong>audit</strong></td><td>API server, OAuth, OVN audit logs</td></tr>
+        <tr><td><strong>receiver (http)</strong></td><td>Accept logs from external sources over HTTP</td></tr>
+        <tr><td><strong>receiver (syslog)</strong></td><td>Accept logs from external sources over syslog</td></tr>
+      </tbody>
+    </table>
+    <p class="small">Application inputs support label selectors with In, NotIn, Exists, DoesNotExist operators for filtering.</p>
+  </section>
+
+  <section>
+    <h2>ClusterLogForwarder &mdash; Output Types</h2>
+    <table>
+      <thead>
+        <tr><th>Output</th><th>Protocol / Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>lokiStack</strong></td><td>In-cluster LokiStack with multi-tenancy</td></tr>
+        <tr><td><strong>loki</strong></td><td>External Loki deployments</td></tr>
+        <tr><td><strong>elasticsearch</strong></td><td>External ES 6, 7, 8</td></tr>
+        <tr><td><strong>splunk</strong></td><td>HTTP Event Collector (HEC)</td></tr>
+        <tr><td><strong>kafka</strong></td><td>Kafka 0.11+, SASL auth, dynamic topic routing</td></tr>
+        <tr><td><strong>syslog</strong></td><td>RFC3164 / RFC5424 &mdash; TCP, TLS, UDP</td></tr>
+        <tr><td><strong>cloudwatch</strong></td><td>AWS CloudWatch Logs (access keys or STS)</td></tr>
+        <tr><td><strong>googleCloudLogging</strong></td><td>Google Cloud Logging</td></tr>
+        <tr><td><strong>azureMonitor</strong></td><td>Azure Monitor Logs</td></tr>
+        <tr><td><strong>http</strong></td><td>Generic HTTP/HTTPS endpoint</td></tr>
+        <tr><td><strong>otlp</strong></td><td>OpenTelemetry Protocol (GA in 6.4+)</td></tr>
+        <tr><td><strong>s3</strong></td><td>S3 / S3-compatible object storage (6.4+)</td></tr>
+      </tbody>
+    </table>
+    <p class="small">Multiple outputs per pipeline &mdash; fan-out to syslog + Loki + Splunk simultaneously.</p>
+  </section>
+
+  <section>
+    <h2>Pipeline Filters</h2>
+    <table>
+      <thead>
+        <tr><th>Filter</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Drop</strong></td><td>Drop entire records based on field matching</td></tr>
+        <tr><td><strong>Prune</strong></td><td>Remove specific fields (sensitive data, volume reduction)</td></tr>
+        <tr><td><strong>Multi-line detection</strong></td><td>Combine multi-line stack traces into single records</td></tr>
+        <tr><td><strong>API audit filter</strong></td><td>Reduce audit log volume by level (None/Metadata/Request/RequestResponse)</td></tr>
+      </tbody>
+    </table>
+    <p class="small">Filters apply sequentially. A dropped record does not reach later stages.</p>
+  </section>
+
+  <section>
+    <h2>Log Storage: LokiStack</h2>
+    <div class="columns">
+      <div>
+        <h3>LokiStack (current)</h3>
+        <ul>
+          <li>Object storage backend (S3, GCS, Azure, ODF)</li>
+          <li>Built-in multi-tenancy via gateway</li>
+          <li>OpenShift RBAC enforced automatically</li>
+          <li>LogQL query language</li>
+          <li>Console UI via Cluster Observability Operator</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Elasticsearch <span class="deprecated-tag">REMOVED</span></h3>
+        <ul>
+          <li>Local persistent volumes</li>
+          <li>No native multi-tenancy</li>
+          <li>Kibana removed in Logging 6.0</li>
+          <li>ES Operator removed Nov 2025</li>
+          <li>Migrate to LokiStack</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</section>
+
+<!-- ==================== ALERTING ==================== -->
+<section>
+  <section>
+    <h1>Alerting</h1>
+    <p><span class="default-tag">ALERTMANAGER SHIPS BY DEFAULT</span></p>
+  </section>
+
+  <section>
+    <h2>AlertManager Architecture</h2>
+    <div class="columns">
+      <div>
+        <h3>Platform Alerts</h3>
+        <ul>
+          <li>Pre-configured rules for cluster health</li>
+          <li>Managed by CMO &mdash; not editable</li>
+          <li>etcd, API server, node pressure, etc.</li>
+          <li>Evaluated by platform Prometheus</li>
+          <li><span class="default-tag">DEFAULT</span></li>
+        </ul>
+      </div>
+      <div>
+        <h3>User-Defined Alerts</h3>
+        <ul>
+          <li>PrometheusRule in user namespaces</li>
+          <li>AlertmanagerConfig for routing</li>
+          <li>Namespace-scoped &mdash; no cluster-admin</li>
+          <li>Evaluated by Thanos Ruler</li>
+          <li><span class="optional-tag">REQUIRES enableUserWorkload</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Enabling User Alert Routing</h2>
+    <pre><code>apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-monitoring-config
+  namespace: openshift-monitoring
+data:
+  config.yaml: |
+    enableUserWorkload: true
+    alertmanagerMain:
+      enableUserAlertmanagerConfig: true</code></pre>
+    <p>Two flags:</p>
+    <ul>
+      <li><strong>enableUserWorkload</strong> &mdash; deploys user-workload Prometheus + Thanos Ruler</li>
+      <li><strong>enableUserAlertmanagerConfig</strong> &mdash; allows AlertmanagerConfig CRs in user namespaces</li>
+    </ul>
+    <p class="small">Without the second flag, alerts fire but cannot be routed to custom receivers.</p>
+  </section>
+
+  <section>
+    <h2>Supported Receiver Types</h2>
+    <div class="columns">
+      <div>
+        <h3>Console UI Support</h3>
+        <ul>
+          <li>Email</li>
+          <li>Slack</li>
+          <li>PagerDuty</li>
+          <li>Webhook</li>
+          <li>Microsoft Teams</li>
+        </ul>
+      </div>
+      <div>
+        <h3>YAML-Only Configuration</h3>
+        <ul>
+          <li>Discord</li>
+          <li>OpsGenie</li>
+          <li>VictorOps / Splunk On-Call</li>
+          <li>SNS</li>
+          <li>Telegram</li>
+          <li>Jira</li>
+          <li>Pushover, WeChat, Webex</li>
+          <li>Rocket.Chat, Mattermost</li>
+        </ul>
+      </div>
+    </div>
+    <p class="small">All receiver types work via AlertmanagerConfig CR (v1beta1) or the alertmanager-main secret.</p>
+  </section>
+
+  <section>
+    <h2>Alert Flow</h2>
+    <blockquote>
+      PrometheusRule &rarr; Thanos Ruler evaluates &rarr; alert fires &rarr; AlertManager routes &rarr; receiver delivers
+    </blockquote>
+    <table>
+      <thead>
+        <tr><th>Resource</th><th>Scope</th><th>Who Creates</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>PrometheusRule</strong></td><td>Namespace</td><td>Developer / app team</td></tr>
+        <tr><td><strong>AlertmanagerConfig</strong></td><td>Namespace</td><td>Developer / app team</td></tr>
+        <tr><td><strong>alertmanager-main Secret</strong></td><td>Cluster-wide</td><td>Cluster admin</td></tr>
+      </tbody>
+    </table>
+    <p class="small">RBAC roles: <code>monitoring-rules-edit</code> for PrometheusRule, <code>alert-routing-edit</code> for AlertmanagerConfig.</p>
+  </section>
+</section>
+
+<!-- ==================== TRACING ==================== -->
+<section>
+  <section>
+    <h1>Distributed Tracing</h1>
+    <p><span class="optional-tag">REQUIRES OPERATOR INSTALL</span></p>
+  </section>
+
+  <section>
+    <h2>Operators Required</h2>
+    <table>
+      <thead>
+        <tr><th>Operator</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Red Hat build of OpenTelemetry</strong></td><td>Collectors + auto-instrumentation injection</td></tr>
+        <tr><td><strong>Tempo Operator</strong></td><td>TempoStack for trace storage and query</td></tr>
+        <tr><td><strong>Cluster Observability Operator</strong></td><td>Distributed Tracing UI plugin in web console</td></tr>
+      </tbody>
+    </table>
+    <div class="warn-box">
+      <strong>Jaeger is deprecated</strong> &mdash; support ended 2025. Migrate to Tempo + OpenTelemetry.
+    </div>
+  </section>
+
+  <section>
+    <h2>Supported Protocols</h2>
+    <table>
+      <thead>
+        <tr><th>Protocol</th><th>Port</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>OTLP gRPC</strong></td><td>4317</td><td>Fully supported (default)</td></tr>
+        <tr><td><strong>OTLP HTTP</strong></td><td>4318</td><td>Fully supported</td></tr>
+        <tr><td><strong>Jaeger Thrift HTTP</strong></td><td>14268</td><td>Backwards compatibility</td></tr>
+        <tr><td><strong>Jaeger gRPC</strong></td><td>14250</td><td>Via OTel Collector</td></tr>
+        <tr><td><strong>Zipkin</strong></td><td>9411</td><td>API-compatible, not officially supported</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>OpenTelemetry Capabilities</h2>
+    <ul>
+      <li>Collector deployment modes: Deployment, DaemonSet, Sidecar, Native Sidecar (4.20+)</li>
+      <li><strong>Auto-instrumentation injection</strong> for: Go, Java, Node.js, Python, .NET, Apache HTTP Server</li>
+      <li>Collector handles traces, metrics, and logs in OTLP format</li>
+      <li>Export to Tempo (traces), Prometheus (metrics), Loki (logs), or any OTLP backend</li>
+    </ul>
+    <h3>TempoStack Storage Backends</h3>
+    <ul>
+      <li>S3, Google Cloud Storage, Azure Blob Storage</li>
+      <li>Red Hat OpenShift Data Foundation (Ceph / NooBaa)</li>
+    </ul>
+  </section>
+</section>
+
+<!-- ==================== NETWORK OBSERVABILITY ==================== -->
+<section>
+  <section>
+    <h1>Network Observability</h1>
+    <p><span class="optional-tag">REQUIRES OPERATOR INSTALL</span> &mdash; included at no extra cost</p>
+  </section>
+
+  <section>
+    <h2>What It Provides</h2>
+    <div class="columns">
+      <div>
+        <ul>
+          <li><strong>eBPF-based flow collection</strong> &mdash; DaemonSet, no router/switch dependency</li>
+          <li><strong>Kubernetes metadata enrichment</strong> &mdash; pod, namespace, node, service</li>
+          <li><strong>DNS tracking</strong> &mdash; request/response correlation</li>
+          <li><strong>NAT/SNAT/DNAT flow correlation</strong> (GA in 1.8)</li>
+        </ul>
+      </div>
+      <div>
+        <ul>
+          <li><strong>Prometheus metrics</strong> for alerting</li>
+          <li><strong>LokiStack integration</strong> for flow log queries</li>
+          <li><strong>Console UI</strong> &mdash; traffic table, topology views, dashboards</li>
+          <li><strong>Health alerts</strong> (GA in 1.11)</li>
+        </ul>
+      </div>
+    </div>
+    <p class="small">Sampling: 1 in 50 flows by default. Can run without Loki in Prometheus-only mode.</p>
+  </section>
+</section>
+
+<!-- ==================== POWER MONITORING ==================== -->
+<section>
+  <h1>Power Monitoring</h1>
+  <p><span class="tp-tag">TECHNOLOGY PREVIEW</span> &mdash; bare metal only</p>
+  <ul>
+    <li><strong>Kepler</strong> (Kubernetes Efficient Power Level Exporter)</li>
+    <li>eBPF-based agent reads CPU/DRAM power via RAPL or Redfish API</li>
+    <li>Estimates per-container power from CPU time percentage</li>
+    <li>ML-based estimation when hardware counters unavailable</li>
+    <li>Prometheus metrics: <code>kepler_node_power_total</code>, <code>kepler_pod_power_total</code></li>
+    <li>Dashboards in Observe console</li>
+  </ul>
+  <p class="small">Not supported under production SLAs. Most cloud vendors do not expose power management subsystems.</p>
+</section>
+
+<!-- ==================== CLUSTER OBSERVABILITY OPERATOR ==================== -->
+<section>
+  <h2>Cluster Observability Operator</h2>
+  <p><span class="optional-tag">INSTALL</span> &mdash; GA since OCP 4.18 / COO 1.0</p>
+  <p>A single operator that provides <strong>UI plugins</strong> for the web console:</p>
+  <table>
+    <thead>
+      <tr><th>Plugin</th><th>What It Adds</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Logging UI</strong></td><td>Log querying in Observe console (replaces Kibana)</td></tr>
+      <tr><td><strong>Distributed Tracing UI</strong></td><td>Trace visualization in Observe console</td></tr>
+      <tr><td><strong>Dashboards (Perses)</strong></td><td>Custom dashboards in Observe console</td></tr>
+      <tr><td><strong>Korrel8r</strong></td><td>Signal correlation &mdash; link metrics, logs, traces, alerts</td></tr>
+      <tr><td><strong>Incident Detection</strong></td><td>Automated incident grouping (emerging)</td></tr>
+    </tbody>
+  </table>
+  <p class="small">This is the "glue" operator that ties the Observe console to Loki, Tempo, and custom dashboards.</p>
+</section>
+
+<!-- ==================== OPS CHECKLIST ==================== -->
+<section>
+  <section>
+    <h1>Ops Checklist</h1>
+    <p>What you need to configure as an operations team</p>
+  </section>
+
+  <section>
+    <h2>Day 1 &mdash; Must Do</h2>
+    <div class="highlight-box">
+      <ol>
+        <li><strong>Configure persistent storage</strong> for platform Prometheus<br>
+          <span class="small">Default is emptyDir &mdash; metrics are lost on pod restart</span></li>
+        <li><strong>Enable user-workload monitoring</strong><br>
+          <span class="small">ConfigMap in openshift-monitoring &mdash; one-time cluster-admin action</span></li>
+        <li><strong>Install Logging Operator + Loki Operator</strong><br>
+          <span class="small">No logs are collected until you do this</span></li>
+        <li><strong>Create ClusterLogForwarder</strong><br>
+          <span class="small">Define what to collect, where to send &mdash; nothing flows without it</span></li>
+        <li><strong>Configure alert receivers</strong><br>
+          <span class="small">Platform AlertManager has no receivers configured by default</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <h2>Day 2 &mdash; Should Do</h2>
+    <div class="highlight-box">
+      <ol>
+        <li><strong>Install Cluster Observability Operator</strong><br>
+          <span class="small">Logging UI, tracing UI, Perses dashboards, Korrel8r correlation</span></li>
+        <li><strong>Set up remote write</strong> for long-term metrics retention<br>
+          <span class="small">Default Prometheus retention is 15 days</span></li>
+        <li><strong>Install Network Observability</strong><br>
+          <span class="small">Included at no extra cost &mdash; eBPF flow collection + topology views</span></li>
+        <li><strong>Install OpenTelemetry + Tempo</strong><br>
+          <span class="small">If your applications need distributed tracing</span></li>
+        <li><strong>Grant RBAC roles to dev teams</strong><br>
+          <span class="small">monitoring-rules-edit, alert-routing-edit, monitoring-edit</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <h2>Key RBAC Roles</h2>
+    <table>
+      <thead>
+        <tr><th>Role</th><th>Grants</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>monitoring-rules-view</strong></td><td>Read PrometheusRule in a project</td></tr>
+        <tr><td><strong>monitoring-rules-edit</strong></td><td>Create/modify/delete PrometheusRule</td></tr>
+        <tr><td><strong>monitoring-edit</strong></td><td>Create ServiceMonitor, PodMonitor, PrometheusRule</td></tr>
+        <tr><td><strong>alert-routing-edit</strong></td><td>Create/modify/delete AlertmanagerConfig</td></tr>
+        <tr><td><strong>cluster-monitoring-view</strong></td><td>Read all platform metrics (cluster-wide)</td></tr>
+      </tbody>
+    </table>
+    <p class="small">Dev teams get monitoring-rules-edit + alert-routing-edit. SRE/ops gets cluster-monitoring-view.</p>
+  </section>
+</section>
+
+<!-- ==================== PROTOCOL SUMMARY ==================== -->
+<section>
+  <h2>Protocol Summary</h2>
+  <table>
+    <thead>
+      <tr><th>Signal</th><th>Supported Protocols</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Metrics out</strong></td><td>PromQL, Prometheus Remote Write, Thanos StoreAPI, Metrics API</td></tr>
+      <tr><td><strong>Metrics in</strong></td><td>Prometheus scrape, OTLP (4.20+)</td></tr>
+      <tr><td><strong>Logs out</strong></td><td>Syslog (RFC3164/5424), HTTP, Kafka, OTLP, S3, Splunk HEC, CloudWatch, GCP, Azure</td></tr>
+      <tr><td><strong>Logs in</strong></td><td>Container stdout/stderr, journal, audit, HTTP receiver, syslog receiver</td></tr>
+      <tr><td><strong>Traces in</strong></td><td>OTLP gRPC/HTTP, Jaeger Thrift/gRPC, Zipkin</td></tr>
+      <tr><td><strong>Alerts out</strong></td><td>Webhook, Email, Slack, PagerDuty, Teams, SNS, OpsGenie, Jira, Telegram, + more</td></tr>
+      <tr><td><strong>Network flows</strong></td><td>eBPF &rarr; Prometheus metrics + LokiStack flow logs</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- Closing -->
+<section>
+  <h1>Summary</h1>
+  <blockquote>
+    OpenShift ships a production-grade metrics and alerting stack on day 1.<br>
+    Logging, tracing, and network observability are one operator install away.<br>
+    Every signal type supports multiple output protocols for integration with existing tooling.
+  </blockquote>
+  <p class="small">All components are operator-managed and upgradeable in place.</p>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: true,
+  transition: 'slide',
+  width: 1280,
+  height: 720,
+  margin: 0.08,
+  center: true
+});
+</script>
+</body>
+</html>

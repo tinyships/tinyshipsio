@@ -1,0 +1,23 @@
+apiVersion: metal3.io/v1alpha1
+kind: BareMetalHost
+metadata:
+  name: simulated-bmh
+  namespace: openshift-machine-api
+spec:
+  bmc:
+    address: redfish-virtualmedia://192.168.125.1:9000/redfish/v1/Systems/local/sno-abi
+    credentialsName: simulated-bmh-bmc
+    disableCertificateVerification: true
+  bootMACAddress: "aa:aa:aa:aa:03:01"
+  bootMode: UEFI
+  online: true
+  rootDeviceHints:
+    deviceName: /dev/vda
+  image:
+    url: https://dl.fedoraproject.org/pub/fedora/linux/releases/42/Cloud/x86_64/images/Fedora-Cloud-Base-Generic-42-1.1.x86_64.qcow2
+    checksum: https://dl.fedoraproject.org/pub/fedora/linux/releases/42/Cloud/x86_64/images/Fedora-Cloud-42-1.1-x86_64-CHECKSUM
+    checksumType: auto
+    format: qcow2
+  userData:
+    name: simulated-bmh-userdata
+    namespace: openshift-machine-api

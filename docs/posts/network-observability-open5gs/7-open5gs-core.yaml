@@ -1,0 +1,175 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: open5gs-core
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: open5gs-sa
+  namespace: open5gs-core
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+  namespace: open5gs-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      serviceAccountName: open5gs-sa
+      containers:
+        - name: mongodb
+          image: docker.io/mongo:6.0
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: data
+              mountPath: /data/db
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+  namespace: open5gs-core
+spec:
+  selector:
+    app: mongodb
+  ports:
+    - port: 27017
+      targetPort: 27017
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nrf-config
+  namespace: open5gs-core
+data:
+  nrf.yaml: |
+    logger:
+      level: info
+
+    nrf:
+      serving:
+        - plmn_id:
+            mcc: 001
+            mnc: 01
+      sbi:
+        server:
+          - address: 0.0.0.0
+            port: 7777
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nrf
+  namespace: open5gs-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nrf
+  template:
+    metadata:
+      labels:
+        app: nrf
+    spec:
+      serviceAccountName: open5gs-sa
+      containers:
+        - name: nrf
+          image: docker.io/gradiant/open5gs:2.7.6
+          command: ["open5gs-nrfd"]
+          args: ["-c", "/etc/open5gs/custom/nrf.yaml"]
+          ports:
+            - containerPort: 7777
+          volumeMounts:
+            - name: config
+              mountPath: /etc/open5gs/custom
+      volumes:
+        - name: config
+          configMap:
+            name: nrf-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nrf
+  namespace: open5gs-core
+spec:
+  selector:
+    app: nrf
+  ports:
+    - port: 7777
+      targetPort: 7777
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scp-config
+  namespace: open5gs-core
+data:
+  scp.yaml: |
+    logger:
+      level: info
+
+    scp:
+      sbi:
+        server:
+          - address: 0.0.0.0
+            port: 7777
+        client:
+          nrf:
+            - uri: http://nrf.open5gs-core.svc.cluster.local:7777
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scp
+  namespace: open5gs-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scp
+  template:
+    metadata:
+      labels:
+        app: scp
+    spec:
+      serviceAccountName: open5gs-sa
+      containers:
+        - name: scp
+          image: docker.io/gradiant/open5gs:2.7.6
+          command: ["open5gs-scpd"]
+          args: ["-c", "/etc/open5gs/custom/scp.yaml"]
+          ports:
+            - containerPort: 7777
+          volumeMounts:
+            - name: config
+              mountPath: /etc/open5gs/custom
+      volumes:
+        - name: config
+          configMap:
+            name: scp-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scp
+  namespace: open5gs-core
+spec:
+  selector:
+    app: scp
+  ports:
+    - port: 7777
+      targetPort: 7777

@@ -1,0 +1,26 @@
+global:
+  namespace: simulated-bmh
+
+route:
+  enabled: true
+  host: ""
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+
+chassis:
+  - name: simulated-bmh
+    namespace: simulated-bmh
+    service_account: default
+
+authentication:
+  users:
+    - username: admin
+      password: r3dfish!
+      chassis:
+        - simulated-bmh
+
+datavolume:
+  storage_size: 3Gi
+  storage_class: lvms-vg-ssd-immediate
+  allow_insecure_tls: true

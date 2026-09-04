@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traffic-generator
+  namespace: open5gs-control
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traffic-generator
+  template:
+    metadata:
+      labels:
+        app: traffic-generator
+    spec:
+      serviceAccountName: open5gs-sa
+      containers:
+        - name: traffic-generator
+          image: registry.access.redhat.com/ubi9/ubi:latest
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              NRF=http://nrf.open5gs-core.svc.cluster.local:7777
+              SCP=http://scp.open5gs-core.svc.cluster.local:7777
+
+              NF_TYPES=("AMF" "SMF" "UDM" "UDR" "AUSF" "PCF" "NSSF" "BSF" "SCP" "UPF")
+
+              CONTROL_NFS=(
+                "http://amf.open5gs-control.svc.cluster.local:7777"
+                "http://smf.open5gs-control.svc.cluster.local:7777"
+                "http://ausf.open5gs-control.svc.cluster.local:7777"
+                "http://udm.open5gs-control.svc.cluster.local:7777"
+                "http://udr.open5gs-control.svc.cluster.local:7777"
+                "http://pcf.open5gs-control.svc.cluster.local:7777"
+                "http://nssf.open5gs-control.svc.cluster.local:7777"
+                "http://bsf.open5gs-control.svc.cluster.local:7777"
+              )
+
+              echo "Traffic generator started"
+              while true; do
+                echo "--- Round $(date -u +%H:%M:%S) ---"
+
+                echo "  Querying NRF: list all NF instances"
+                curl --http2-prior-knowledge -sf -o /dev/null -w "  NRF instances: %{http_code} (%{time_total}s)\n" \
+                  "$NRF/nnrf-nfm/v1/nf-instances" || echo "  NRF instances: failed"
+
+                for nf_type in "${NF_TYPES[@]}"; do
+                  curl --http2-prior-knowledge -sf -o /dev/null -w "  NRF discover $nf_type: %{http_code} (%{time_total}s)\n" \
+                    "$NRF/nnrf-disc/v1/nf-instances?target-nf-type=$nf_type" || true
+                done
+
+                echo "  Querying SCP"
+                curl --http2-prior-knowledge -sf -o /dev/null -w "  SCP status: %{http_code} (%{time_total}s)\n" \
+                  "$SCP/nnrf-nfm/v1/nf-instances" || true
+
+                for nf_url in "${CONTROL_NFS[@]}"; do
+                  nf_name=$(echo "$nf_url" | sed 's|http://\([^.]*\)\..*|\1|')
+                  curl --http2-prior-knowledge -sf -o /dev/null -w "  $nf_name health: %{http_code} (%{time_total}s)\n" \
+                    --connect-timeout 2 "$nf_url/" || true
+                done
+
+                echo "  Querying MongoDB via UDR"
+                curl --http2-prior-knowledge -sf -o /dev/null -w "  UDR subs: %{http_code} (%{time_total}s)\n" \
+                  --connect-timeout 2 \
+                  "http://udr.open5gs-control.svc.cluster.local:7777/nudr-dr/v1/subscription-data" || true
+
+                sleep $((RANDOM % 3 + 2))
+              done

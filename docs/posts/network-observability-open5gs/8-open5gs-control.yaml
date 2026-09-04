@@ -1,0 +1,584 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: open5gs-control
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: open5gs-sa
+  namespace: open5gs-control
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: amf-config
+  namespace: open5gs-control
+data:
+  amf.yaml: |
+    logger:
+      level: info
+
+    amf:
+      sbi:
+        server:
+          - address: 0.0.0.0
+            port: 7777
+        client:
+          scp:
+            - uri: http://scp.open5gs-core.svc.cluster.local:7777
+      ngap:
+        server:
+          - address: 0.0.0.0
+      guami:
+        - plmn_id:
+            mcc: 001
+            mnc: 01
+          amf_id:
+            region: 2
+            set: 1
+      tai:
+        - plmn_id:
+            mcc: 001
+            mnc: 01
+          tac: 1
+      plmn_support:
+        - plmn_id:
+            mcc: 001
+            mnc: 01
+          s_nssai:
+            - sst: 1
+      security:
+        integrity_order: [NIA2, NIA1, NIA0]
+        ciphering_order: [NEA0, NEA1, NEA2]
+      network_name:
+        full: Open5GS
+        short: Next
+      amf_name: open5gs-amf0
+      time:
+        t3512:
+          value: 540
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: amf
+  namespace: open5gs-control
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: amf
+  template:
+    metadata:
+      labels:
+        app: amf
+    spec:
+      serviceAccountName: open5gs-sa
+      containers:
+        - name: amf
+          image: docker.io/gradiant/open5gs:2.7.6
+          command: ["open5gs-amfd"]
+          args: ["-c", "/etc/open5gs/custom/amf.yaml"]
+          ports:
+            - containerPort: 7777
+              name: sbi
+            - containerPort: 38412
+              name: ngap
+              protocol: SCTP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/open5gs/custom
+      volumes:
+        - name: config
+          configMap:
+            name: amf-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: amf
+  namespace: open5gs-control
+spec:
+  selector:
+    app: amf
+  ports:
+    - port: 7777
+      targetPort: 7777
+      name: sbi
+    - port: 38412
+      targetPort: 38412
+      protocol: SCTP
+      name: ngap
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: smf-config
+  namespace: open5gs-control
+data:
+  smf.yaml: |
+    logger:
+      level: info
+
+    smf:
+      sbi:
+        server:
+          - address: 0.0.0.0
+            port: 7777
+        client:
+          scp:
+            - uri: http://scp.open5gs-core.svc.cluster.local:7777
+      pfcp:
+        server:
+          - address: 0.0.0.0
+        client:
+          upf:
+            - address: upf.open5gs-data.svc.cluster.local
+      session:
+        - subnet: 10.45.0.0/16
+          gateway: 10.45.0.1
+      gtpu:
+        server:
+          - address: 0.0.0.0
+      dns:
+        - 8.8.8.8
+        - 8.8.4.4
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smf
+  namespace: open5gs-control
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: smf
+  template:
+    metadata:
+      labels:
+        app: smf
+    spec:
+      serviceAccountName: open5gs-sa
+      containers:
+        - name: smf
+          image: docker.io/gradiant/open5gs:2.7.6
+          command: ["open5gs-smfd"]
+          args: ["-c", "/etc/open5gs/custom/smf.yaml"]
+          ports:
+            - containerPort: 7777
+              name: sbi
+            - containerPort: 8805
+              name: pfcp
+              protocol: UDP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/open5gs/custom
+      volumes:
+        - name: config
+          configMap:
+            name: smf-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smf
+  namespace: open5gs-control
+spec:
+  selector:
+    app: smf
+  ports:
+    - port: 7777
+      targetPort: 7777
+      name: sbi
+    - port: 8805
+      targetPort: 8805
+      protocol: UDP
+      name: pfcp
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ausf-config
+  namespace: open5gs-control
+data:
+  ausf.yaml: |
+    logger:
+      level: info
+
+    ausf:
+      sbi:
+        server:
+          - address: 0.0.0.0
+            port: 7777
+        client:
+          scp:
+            - uri: http://scp.open5gs-core.svc.cluster.local:7777
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ausf
+  namespace: open5gs-control
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ausf
+  template:
+    metadata:
+      labels:
+        app: ausf
+    spec:
+      serviceAccountName: open5gs-sa
+      containers:
+        - name: ausf
+          image: docker.io/gradiant/open5gs:2.7.6
+          command: ["open5gs-ausfd"]
+          args: ["-c", "/etc/open5gs/custom/ausf.yaml"]
+          ports:
+            - containerPort: 7777
+          volumeMounts:
+            - name: config
+              mountPath: /etc/open5gs/custom
+      volumes:
+        - name: config
+          configMap:
+            name: ausf-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ausf
+  namespace: open5gs-control
+spec:
+  selector:
+    app: ausf
+  ports:
+    - port: 7777
+      targetPort: 7777
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: udm-config
+  namespace: open5gs-control
+data:
+  udm.yaml: |
+    logger:
+      level: info
+
+    udm:
+      sbi:
+        server:
+          - address: 0.0.0.0
+            port: 7777
+        client:
+          scp:
+            - uri: http://scp.open5gs-core.svc.cluster.local:7777
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: udm
+  namespace: open5gs-control
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: udm
+  template:
+    metadata:
+      labels:
+        app: udm
+    spec:
+      serviceAccountName: open5gs-sa
+      containers:
+        - name: udm
+          image: docker.io/gradiant/open5gs:2.7.6
+          command: ["open5gs-udmd"]
+          args: ["-c", "/etc/open5gs/custom/udm.yaml"]
+          ports:
+            - containerPort: 7777
+          volumeMounts:
+            - name: config
+              mountPath: /etc/open5gs/custom
+      volumes:
+        - name: config
+          configMap:
+            name: udm-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: udm
+  namespace: open5gs-control
+spec:
+  selector:
+    app: udm
+  ports:
+    - port: 7777
+      targetPort: 7777
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: udr-config
+  namespace: open5gs-control
+data:
+  udr.yaml: |
+    logger:
+      level: info
+
+    udr:
+      sbi:
+        server:
+          - address: 0.0.0.0
+            port: 7777
+        client:
+          scp:
+            - uri: http://scp.open5gs-core.svc.cluster.local:7777
+
+    db_uri: mongodb://mongodb.open5gs-core.svc.cluster.local:27017/open5gs
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: udr
+  namespace: open5gs-control
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: udr
+  template:
+    metadata:
+      labels:
+        app: udr
+    spec:
+      serviceAccountName: open5gs-sa
+      containers:
+        - name: udr
+          image: docker.io/gradiant/open5gs:2.7.6
+          command: ["open5gs-udrd"]
+          args: ["-c", "/etc/open5gs/custom/udr.yaml"]
+          env:
+            - name: DB_URI
+              value: mongodb://mongodb.open5gs-core.svc.cluster.local:27017/open5gs
+          ports:
+            - containerPort: 7777
+          volumeMounts:
+            - name: config
+              mountPath: /etc/open5gs/custom
+      volumes:
+        - name: config
+          configMap:
+            name: udr-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: udr
+  namespace: open5gs-control
+spec:
+  selector:
+    app: udr
+  ports:
+    - port: 7777
+      targetPort: 7777
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pcf-config
+  namespace: open5gs-control
+data:
+  pcf.yaml: |
+    logger:
+      level: info
+
+    pcf:
+      sbi:
+        server:
+          - address: 0.0.0.0
+            port: 7777
+        client:
+          scp:
+            - uri: http://scp.open5gs-core.svc.cluster.local:7777
+
+    db_uri: mongodb://mongodb.open5gs-core.svc.cluster.local:27017/open5gs
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pcf
+  namespace: open5gs-control
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pcf
+  template:
+    metadata:
+      labels:
+        app: pcf
+    spec:
+      serviceAccountName: open5gs-sa
+      containers:
+        - name: pcf
+          image: docker.io/gradiant/open5gs:2.7.6
+          command: ["open5gs-pcfd"]
+          args: ["-c", "/etc/open5gs/custom/pcf.yaml"]
+          env:
+            - name: DB_URI
+              value: mongodb://mongodb.open5gs-core.svc.cluster.local:27017/open5gs
+          ports:
+            - containerPort: 7777
+          volumeMounts:
+            - name: config
+              mountPath: /etc/open5gs/custom
+      volumes:
+        - name: config
+          configMap:
+            name: pcf-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pcf
+  namespace: open5gs-control
+spec:
+  selector:
+    app: pcf
+  ports:
+    - port: 7777
+      targetPort: 7777
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nssf-config
+  namespace: open5gs-control
+data:
+  nssf.yaml: |
+    logger:
+      level: info
+
+    nssf:
+      sbi:
+        server:
+          - address: 0.0.0.0
+            port: 7777
+        client:
+          scp:
+            - uri: http://scp.open5gs-core.svc.cluster.local:7777
+          nsi:
+            - uri: http://nrf.open5gs-core.svc.cluster.local:7777
+              s_nssai:
+                sst: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nssf
+  namespace: open5gs-control
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nssf
+  template:
+    metadata:
+      labels:
+        app: nssf
+    spec:
+      serviceAccountName: open5gs-sa
+      containers:
+        - name: nssf
+          image: docker.io/gradiant/open5gs:2.7.6
+          command: ["open5gs-nssfd"]
+          args: ["-c", "/etc/open5gs/custom/nssf.yaml"]
+          ports:
+            - containerPort: 7777
+          volumeMounts:
+            - name: config
+              mountPath: /etc/open5gs/custom
+      volumes:
+        - name: config
+          configMap:
+            name: nssf-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nssf
+  namespace: open5gs-control
+spec:
+  selector:
+    app: nssf
+  ports:
+    - port: 7777
+      targetPort: 7777
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bsf-config
+  namespace: open5gs-control
+data:
+  bsf.yaml: |
+    logger:
+      level: info
+
+    bsf:
+      sbi:
+        server:
+          - address: 0.0.0.0
+            port: 7777
+        client:
+          scp:
+            - uri: http://scp.open5gs-core.svc.cluster.local:7777
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bsf
+  namespace: open5gs-control
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bsf
+  template:
+    metadata:
+      labels:
+        app: bsf
+    spec:
+      serviceAccountName: open5gs-sa
+      containers:
+        - name: bsf
+          image: docker.io/gradiant/open5gs:2.7.6
+          command: ["open5gs-bsfd"]
+          args: ["-c", "/etc/open5gs/custom/bsf.yaml"]
+          ports:
+            - containerPort: 7777
+          volumeMounts:
+            - name: config
+              mountPath: /etc/open5gs/custom
+      volumes:
+        - name: config
+          configMap:
+            name: bsf-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bsf
+  namespace: open5gs-control
+spec:
+  selector:
+    app: bsf
+  ports:
+    - port: 7777
+      targetPort: 7777

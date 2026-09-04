@@ -1,0 +1,13 @@
+FROM registry.redhat.io/rhel9/rhel-bootc:9.8
+
+RUN dnf -y install httpd firewalld && \
+    systemctl enable httpd firewalld && \
+    mv /var/www /usr/share/www && \
+    sed -i 's,/var/www,/usr/share/www,' /etc/httpd/conf/httpd.conf && \
+    rm -rf /usr/share/httpd/noindex && \
+    firewall-offline-cmd --service=http && \
+    dnf clean all
+
+COPY 1-index.html /usr/share/www/html/index.html
+
+RUN bootc container lint

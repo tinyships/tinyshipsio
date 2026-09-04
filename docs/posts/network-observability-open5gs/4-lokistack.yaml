@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netobserv
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: netobserv-loki-s3
+  namespace: netobserv
+stringData:
+  access_key_id: minioadmin
+  access_key_secret: minioadmin123
+  bucketnames: netobserv-loki
+  endpoint: http://minio.minio.svc.cluster.local:9000
+  region: us-east-1
+---
+apiVersion: loki.grafana.com/v1
+kind: LokiStack
+metadata:
+  name: netobserv-loki
+  namespace: netobserv
+spec:
+  managementState: Managed
+  size: 1x.demo
+  storage:
+    schemas:
+      - effectiveDate: "2022-06-01"
+        version: v13
+    secret:
+      name: netobserv-loki-s3
+      type: s3
+  storageClassName: ocs-external-storagecluster-ceph-rbd
+  tenants:
+    mode: openshift-network
+  limits:
+    global:
+      ingestion:
+        ingestionRate: 20
+        ingestionBurstSize: 40
+      queries:
+        maxEntriesLimitPerQuery: 10000
+        maxQuerySeries: 5000
+      retention:
+        days: 7

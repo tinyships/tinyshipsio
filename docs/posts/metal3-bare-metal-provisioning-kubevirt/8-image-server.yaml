@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fedora-image-server
+  namespace: openshift-machine-api
+  labels:
+    app: fedora-image-server
+spec:
+  containers:
+    - name: httpd
+      image: registry.access.redhat.com/ubi9/httpd-24:latest
+      ports:
+        - containerPort: 8080
+      volumeMounts:
+        - name: images
+          mountPath: /var/www/html
+  initContainers:
+    - name: download
+      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+      command:
+        - /bin/sh
+        - -c
+        - |
+          curl -Lo /images/Fedora-Cloud-Base-Generic-42-1.1.x86_64.qcow2 \
+            https://dl.fedoraproject.org/pub/fedora/linux/releases/42/Cloud/x86_64/images/Fedora-Cloud-Base-Generic-42-1.1.x86_64.qcow2
+          curl -Lo /images/Fedora-Cloud-42-1.1-x86_64-CHECKSUM \
+            https://dl.fedoraproject.org/pub/fedora/linux/releases/42/Cloud/x86_64/images/Fedora-Cloud-42-1.1-x86_64-CHECKSUM
+      volumeMounts:
+        - name: images
+          mountPath: /images
+  volumes:
+    - name: images
+      emptyDir:
+        sizeLimit: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fedora-image-server
+  namespace: openshift-machine-api
+spec:
+  selector:
+    app: fedora-image-server
+  ports:
+    - port: 80
+      targetPort: 8080

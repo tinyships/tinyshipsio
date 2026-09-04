@@ -1,0 +1,48 @@
+apiVersion: flows.netobserv.io/v1beta2
+kind: FlowCollector
+metadata:
+  name: cluster
+spec:
+  namespace: netobserv
+  deploymentModel: Direct
+  agent:
+    type: eBPF
+    ebpf:
+      sampling: 50
+      privileged: true
+      features:
+        - DNSTracking
+        - PacketDrop
+        - FlowRTT
+        - NetworkEvents
+        - PacketTranslation
+  loki:
+    enable: true
+    mode: LokiStack
+    lokiStack:
+      name: netobserv-loki
+      namespace: netobserv
+  consolePlugin:
+    register: true
+    portNaming:
+      enable: true
+    quickFilters:
+      - name: Open5GS
+        default: true
+        filter:
+          src_namespace: "open5gs-"
+          dst_namespace: "open5gs-"
+      - name: Applications
+        filter:
+          src_namespace!: "openshift-,netobserv"
+          dst_namespace!: "openshift-,netobserv"
+      - name: Infrastructure
+        filter:
+          src_namespace: "openshift-,netobserv"
+          dst_namespace: "openshift-,netobserv"
+      - name: Pods network
+        filter:
+          src_kind: Pod
+          dst_kind: Pod
+  processor:
+    logTypes: Flows

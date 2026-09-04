@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: block-dns-egress
+  namespace: open5gs-data
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - port: 8805
+          protocol: UDP
+        - port: 2152
+          protocol: UDP
+        - port: 7777
+          protocol: TCP

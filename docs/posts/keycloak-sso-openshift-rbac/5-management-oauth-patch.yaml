@@ -1,0 +1,19 @@
+spec:
+  identityProviders:
+  - name: keycloak
+    mappingMethod: claim
+    type: OpenID
+    openID:
+      clientID: openshift-management
+      clientSecret:
+        name: keycloak-management-secret
+      issuer: https://keycloak.apps.<management-cluster-domain>/realms/openshift
+      claims:
+        preferredUsername:
+        - preferred_username
+        name:
+        - name
+        email:
+        - email
+        groups:
+        - groups

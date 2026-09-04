@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: open5gs-data
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: open5gs-sa
+  namespace: open5gs-data
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: upf-config
+  namespace: open5gs-data
+data:
+  upf.yaml: |
+    logger:
+      level: info
+
+    upf:
+      pfcp:
+        server:
+          - address: 0.0.0.0
+      gtpu:
+        server:
+          - address: 0.0.0.0
+      session:
+        - subnet: 10.45.0.0/16
+          gateway: 10.45.0.1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: upf
+  namespace: open5gs-data
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: upf
+  template:
+    metadata:
+      labels:
+        app: upf
+    spec:
+      serviceAccountName: open5gs-sa
+      initContainers:
+        - name: tun-setup
+          image: docker.io/gradiant/open5gs:2.7.6
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              ip tuntap add name ogstun mode tun &&
+              ip addr add 10.45.0.1/16 dev ogstun &&
+              ip link set ogstun up &&
+              sysctl -w net.ipv4.ip_forward=1 &&
+              iptables -t nat -A POSTROUTING -s 10.45.0.0/16 ! -o ogstun -j MASQUERADE
+          securityContext:
+            privileged: true
+      containers:
+        - name: upf
+          image: docker.io/gradiant/open5gs:2.7.6
+          command: ["open5gs-upfd"]
+          args: ["-c", "/etc/open5gs/custom/upf.yaml"]
+          ports:
+            - containerPort: 8805
+              name: pfcp
+              protocol: UDP
+            - containerPort: 2152
+              name: gtpu
+              protocol: UDP
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: config
+              mountPath: /etc/open5gs/custom
+      volumes:
+        - name: config
+          configMap:
+            name: upf-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: upf
+  namespace: open5gs-data
+spec:
+  selector:
+    app: upf
+  ports:
+    - port: 8805
+      targetPort: 8805
+      protocol: UDP
+      name: pfcp
+    - port: 2152
+      targetPort: 2152
+      protocol: UDP
+      name: gtpu

@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-create-bucket
+  namespace: minio
+spec:
+  template:
+    spec:
+      containers:
+        - name: mc
+          image: quay.io/minio/mc:latest
+          command: ["/bin/sh", "-c"]
+          env:
+            - name: MC_CONFIG_DIR
+              value: /tmp/.mc
+          args:
+            - |
+              mc alias set local http://minio.minio.svc.cluster.local:9000 minioadmin minioadmin123 &&
+              mc mb --ignore-existing local/netobserv-loki &&
+              echo "Bucket netobserv-loki created successfully"
+      restartPolicy: Never
+  backoffLimit: 3

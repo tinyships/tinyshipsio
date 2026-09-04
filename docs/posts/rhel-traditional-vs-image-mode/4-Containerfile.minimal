@@ -1,0 +1,24 @@
+FROM registry.redhat.io/rhel9/rhel-bootc:9.8
+
+RUN dnf -y install httpd firewalld && \
+    dnf -y remove --noautoremove \
+      toolbox \
+      sssd-ad sssd-ipa sssd-krb5 sssd-krb5-common sssd-ldap sssd-common-pac \
+      adcli adcli-selinux samba-client-libs samba-common samba-common-libs \
+      lvm2 mdadm cryptsetup udisks2 nvme-cli \
+      nano socat lsof bind-utils net-tools bash-completion \
+      tpm2-tools stalld WALinuxAgent-udev \
+      flatpak-session-helper console-login-helper-messages \
+      console-login-helper-messages-issuegen \
+      console-login-helper-messages-profile \
+      dnf-bootc criu && \
+    systemctl enable httpd firewalld && \
+    mv /var/www /usr/share/www && \
+    sed -i 's,/var/www,/usr/share/www,' /etc/httpd/conf/httpd.conf && \
+    rm -rf /usr/share/httpd/noindex && \
+    firewall-offline-cmd --service=http && \
+    dnf clean all
+
+COPY 1-index.html /usr/share/www/html/index.html
+
+RUN bootc container lint

@@ -1,0 +1,19 @@
+spec:
+  identityProviders:
+  - name: keycloak
+    mappingMethod: claim
+    type: OpenID
+    openID:
+      clientID: openshift-remote
+      clientSecret:
+        name: keycloak-remote-secret
+      issuer: https://keycloak.apps.<management-cluster-domain>/realms/openshift
+      claims:
+        preferredUsername:
+        - preferred_username
+        name:
+        - name
+        email:
+        - email
+        groups:
+        - groups
